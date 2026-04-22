@@ -1,70 +1,92 @@
-// Configurazione: quanti posti auto vogliamo visualizzare?
-const NUMERO_POSTI = 10;
-const griglia = document.getElementById('booking-grid');
+let npassCorrente = "";
+let giorniSelezionati = [];
+const LIMITE_POSTI = 120; // Capacità massima
 
-// Funzione per generare la grafica all'avvio
-function creaMappaPosti() {
-    griglia.innerHTML = ''; // Pulisce la griglia
-    
-    for (let i = 1; i <= NUMERO_POSTI; i++) {
-        const idPosto = `P${i}`;
-        
-        // Crea il quadratino del posto
-        const divPosto = document.createElement('div');
-        divPosto.className = 'posto-card';
-        divPosto.innerHTML = `
-            <h3>Posto ${idPosto}</h3>
-            <input type="text" id="nota-${idPosto}" placeholder="Note (es. Targa)">
-            <input type="date" id="data-${idPosto}">
-            <input type="text" id="utente-${idPosto}" placeholder="Tuo Nome">
-            <button onclick="preparaPrenotazione('${idPosto}')">Prenota Ora</button>
-        `;
-        griglia.appendChild(divPosto);
-    }
-}
-
-// Funzione che raccoglie i dati dai quadratini e chiama il server
-async function preparaPrenotazione(idPosto) {
-    const nota = document.getElementById(`nota-${idPosto}`).value;
-    const data = document.getElementById(`data-${idPosto}`).value;
-    const utente = document.getElementById(`utente-${idPosto}`).value;
-
-    if (!data || !utente) {
-        alert("Per favore, inserisci almeno Data e Nome.");
+// 1. Funzione di Accesso
+function verificaAccesso() {
+    const npass = document.getElementById('npass-input').value.trim();
+    if (npass === "") {
+        alert("Inserisci un NPASS valido!");
         return;
     }
-
-    await eseguiPrenotazione(idPosto, nota, data, utente);
+    // Qui in futuro faremo un controllo col secondo database.
+    // Per ora, se scrive qualcosa, lo facciamo entrare.
+    npassCorrente = npass;
+    document.getElementById('login-section').style.display = 'none';
+    document.getElementById('calendar-section').style.display = 'block';
+    
+    generaCalendario();
 }
 
-// La tua funzione originale migliorata
-async function eseguiPrenotazione(idPosto, nota, dataScelta, nomeUtente) {
+// 2. Generazione del Calendario (Mese corrente semplificato)
+function generaCalendario() {
+    const contenitore = document.getElementById('calendario-gigante');
+    contenitore.innerHTML = '';
+    
+    // Creiamo 30 giorni fittizi per la demo
+    for (let i = 1; i <= 30; i++) {
+        let divGiorno = document.createElement('div');
+        divGiorno.className = 'giorno';
+        
+        // Formattiamo la data (es. 2026-05-01)
+        let dataTesto = `2026-05-${i.toString().padStart(2, '0')}`;
+        divGiorno.innerText = i;
+        divGiorno.dataset.data = dataTesto;
+
+        // SIMULAZIONE: Facciamo finta che il giorno 15 sia PIENO (120 posti occupati)
+        if (i === 15) {
+            divGiorno.classList.add('pieno');
+            divGiorno.title = "Al completo per questo giorno";
+            divGiorno.onclick = () => alert("Questo giorno ha già raggiunto i 120 posti prenotati.");
+        } else {
+            // Giorno cliccabile e prenotabile
+            divGiorno.onclick = () => selezionaGiorno(divGiorno, dataTesto);
+        }
+        
+        contenitore.appendChild(divGiorno);
+    }
+}
+
+// 3. Selezione dei giorni
+function selezionaGiorno(elemento, data) {
+    if (elemento.classList.contains('selezionato')) {
+        // Deseleziona
+        elemento.classList.remove('selezionato');
+        giorniSelezionati = giorniSelezionati.filter(d => d !== data);
+    } else {
+        // Seleziona
+        elemento.classList.add('selezionato');
+        giorniSelezionati.push(data);
+    }
+    
+    document.getElementById('conteggio-giorni').innerText = giorniSelezionati.length;
+    document.getElementById('btn-conferma').disabled = giorniSelezionati.length === 0;
+}
+
+// 4. Invio multiplo al Server
+async function confermaPrenotazioni() {
+    // Invia una richiesta per ogni giorno selezionato
+    for (let data of giorniSelezionati) {
+        await inviaSingolaPrenotazione(data);
+    }
+    alert("✅ Tutte le giornate sono state prenotate!");
+    location.reload(); // Riavvia l'app
+}
+
+async function inviaSingolaPrenotazione(dataScelta) {
     try {
-        const response = await fetch('/api/prenota', { // Usiamo un percorso relativo, più sicuro
+        const response = await fetch('/api/prenota', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
-                npass: idPosto, 
-                nextra: nota, 
+                npass: npassCorrente, // Usiamo l'npass inserito all'inizio
+                nextra: "Prenotazione Multipla V2", 
                 data: dataScelta, 
-                utente: nomeUtente 
+                utente: npassCorrente // Per ora usiamo npass anche qui
             })
         });
-
-        const risultato = await response.json();
-
-        if (response.ok) {
-            alert("✅ Prenotazione registrata con successo!");
-            // Opzionale: pulisci i campi
-            location.reload(); 
-        } else {
-            alert("❌ Errore dal server: " + (risultato.error || "Errore sconosciuto"));
-        }
+        if (!response.ok) console.error("Errore salvataggio giorno:", dataScelta);
     } catch (error) {
         console.error("Errore di rete:", error);
-        alert("Impossibile connettersi al database.");
     }
 }
-
-// Fai partire tutto quando la pagina si carica
-window.onload = creaMappaPosti;
