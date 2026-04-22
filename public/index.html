@@ -2,31 +2,41 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
-    <title>Prenotazione Logistica V2</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prenotazione Logistica - Portale Ufficiale</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="main-container">
-        <h1>Sistema Parcheggi</h1>
-
-        <div id="login-section" class="card">
-            <h2>Inserisci il tuo NPASS</h2>
-            <p>Inserisci la tua chiave univoca per accedere al calendario.</p>
-            <input type="text" id="npass-input" placeholder="Es. PASS-1234">
-            <button onclick="verificaAccesso()">Accedi</button>
+        <div id="login-section" class="card fade-in">
+            <div class="logo">🅿️</div>
+            <h1>Accesso Portale</h1>
+            <input type="text" id="npass-input" placeholder="Codice NPASS (Obbligatorio)">
+            <input type="email" id="email-input" placeholder="Tua Email (Per conferma)">
+            <button onclick="verificaAccesso()">Accedi al Calendario</button>
         </div>
 
-        <div id="calendar-section" class="card" style="display: none;">
-            <h2>Seleziona le giornate</h2>
-            <p>Posti massimi per giorno: 120. I giorni rossi sono al completo.</p>
-            
-            <div id="calendario-gigante" class="grid-calendario">
-                </div>
-
-            <div class="riepilogo">
-                <p>Giorni selezionati: <span id="conteggio-giorni">0</span></p>
-                <button onclick="confermaPrenotazioni()" id="btn-conferma" disabled>Conferma Prenotazione</button>
+        <div id="calendar-section" class="card fade-in" style="display: none;">
+            <div class="calendar-header">
+                <button onclick="cambiaMese(-1)">◀</button>
+                <h2 id="mese-corrente">Maggio 2026</h2>
+                <button onclick="cambiaMese(1)">▶</button>
             </div>
+            
+            <div id="calendario-gigante" class="grid-calendario"></div>
+
+            <div class="footer-calendar">
+                <p>Selezionati: <strong id="conteggio-giorni">0</strong> giorni</p>
+                <button onclick="confermaPrenotazioni()" id="btn-conferma" disabled>Conferma e Invia Email</button>
+            </div>
+        </div>
+
+        <div id="success-section" class="card fade-in" style="display: none;">
+            <div class="success-icon">✅</div>
+            <h2>Prenotazione Effettuata!</h2>
+            <div id="riepilogo-dati"></div>
+            <p class="nota-email">La conferma è stata inviata all'indirizzo riportato.</p>
+            <button onclick="location.reload()">Torna alla Home</button>
         </div>
     </div>
 
