@@ -1,15 +1,21 @@
-body { font-family: 'Segoe UI', sans-serif; background-color: #f4f7f6; display: flex; justify-content: center; padding: 20px; }
-.main-container { width: 100%; max-width: 800px; text-align: center; }
-.card { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 20px; }
-input { padding: 10px; font-size: 16px; width: 80%; max-width: 300px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 5px; }
-button { padding: 10px 20px; font-size: 16px; background-color: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer; }
-button:disabled { background-color: #ccc; cursor: not-allowed; }
-button:hover:not(:disabled) { background-color: #218838; }
+:root { --primary: #2563eb; --success: #16a34a; --danger: #dc2626; --bg: #f8fafc; }
+body { font-family: 'Inter', system-ui, sans-serif; background-color: var(--bg); color: #1e293b; margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+.card { background: white; padding: 2rem; border-radius: 16px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1); width: 90%; max-width: 500px; text-align: center; }
+.fade-in { animation: fadeIn 0.5s ease-out; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-/* Stile Calendario Gigante */
-.grid-calendario { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; margin-top: 20px; }
-.giorno { padding: 15px 5px; background: #e9ecef; border-radius: 5px; cursor: pointer; border: 2px solid transparent; font-weight: bold; }
-.giorno:hover { background: #d3d9df; }
-.giorno.selezionato { background: #007bff; color: white; border-color: #0056b3; }
-.giorno.pieno { background: #dc3545; color: white; cursor: not-allowed; opacity: 0.7; }
-.riepilogo { margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee; }
+input { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #e2e8f0; border-radius: 8px; box-sizing: border-box; font-size: 1rem; }
+button { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.2s; margin-top: 10px; }
+button:hover:not(:disabled) { filter: brightness(1.1); }
+button:disabled { background: #cbd5e1; cursor: not-allowed; }
+
+.calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+.calendar-header button { width: auto; background: none; color: var(--primary); font-size: 1.5rem; padding: 0 15px; }
+
+.grid-calendario { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
+.giorno { padding: 12px 5px; background: #f1f5f9; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.9rem; transition: 0.2s; }
+.giorno:hover { background: #e2e8f0; }
+.giorno.selezionato { background: var(--primary); color: white; }
+.giorno.pieno { background: #fee2e2; color: #991b1b; cursor: not-allowed; text-decoration: line-through; }
+
+#riepilogo-dati { background: #f1f5f9; padding: 15px; border-radius: 8px; margin: 20px 0; text-align: left; line-height: 1.6; }
