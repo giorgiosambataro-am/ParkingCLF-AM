@@ -1,92 +1,106 @@
 let npassCorrente = "";
+let emailCorrente = "";
 let giorniSelezionati = [];
-const LIMITE_POSTI = 120; // Capacità massima
+let dataVisualizzata = new Date(); // Parte da oggi
 
-// 1. Funzione di Accesso
 function verificaAccesso() {
-    const npass = document.getElementById('npass-input').value.trim();
-    if (npass === "") {
-        alert("Inserisci un NPASS valido!");
+    npassCorrente = document.getElementById('npass-input').value.trim();
+    emailCorrente = document.getElementById('email-input').value.trim();
+
+    if (!npassCorrente || !emailCorrente.includes('@')) {
+        alert("Inserisci un NPASS valido e una Email corretta!");
         return;
     }
-    // Qui in futuro faremo un controllo col secondo database.
-    // Per ora, se scrive qualcosa, lo facciamo entrare.
-    npassCorrente = npass;
+
     document.getElementById('login-section').style.display = 'none';
     document.getElementById('calendar-section').style.display = 'block';
-    
-    generaCalendario();
+    renderizzaCalendario();
 }
 
-// 2. Generazione del Calendario (Mese corrente semplificato)
-function generaCalendario() {
-    const contenitore = document.getElementById('calendario-gigante');
-    contenitore.innerHTML = '';
-    
-    // Creiamo 30 giorni fittizi per la demo
-    for (let i = 1; i <= 30; i++) {
-        let divGiorno = document.createElement('div');
-        divGiorno.className = 'giorno';
-        
-        // Formattiamo la data (es. 2026-05-01)
-        let dataTesto = `2026-05-${i.toString().padStart(2, '0')}`;
-        divGiorno.innerText = i;
-        divGiorno.dataset.data = dataTesto;
+function cambiaMese(direzione) {
+    dataVisualizzata.setMonth(dataVisualizzata.getMonth() + direzione);
+    renderizzaCalendario();
+}
 
-        // SIMULAZIONE: Facciamo finta che il giorno 15 sia PIENO (120 posti occupati)
-        if (i === 15) {
-            divGiorno.classList.add('pieno');
-            divGiorno.title = "Al completo per questo giorno";
-            divGiorno.onclick = () => alert("Questo giorno ha già raggiunto i 120 posti prenotati.");
-        } else {
-            // Giorno cliccabile e prenotabile
-            divGiorno.onclick = () => selezionaGiorno(divGiorno, dataTesto);
-        }
+function renderizzaCalendario() {
+    const contenitore = document.getElementById('calendario-gigante');
+    const headerMese = document.getElementById('mese-corrente');
+    contenitore.innerHTML = '';
+
+    const anno = dataVisualizzata.getFullYear();
+    const mese = dataVisualizzata.getMonth();
+    
+    headerMese.innerText = new Intl.DateTimeFormat('it-IT', { month: 'long', year: 'numeric' }).format(dataVisualizzata);
+
+    const primoGiornoMese = new Date(anno, mese, 1).getDay();
+    const giorniNelMese = new Date(anno, mese + 1, 0).getDate();
+
+    // Spazi vuoti per i giorni della settimana precedente
+    for (let i = 0; i < (primoGiornoMese === 0 ? 6 : primoGiornoMese - 1); i++) {
+        contenitore.appendChild(document.createElement('div'));
+    }
+
+    for (let g = 1; g <= giorniNelMese; g++) {
+        const divGiorno = document.createElement('div');
+        divGiorno.className = 'giorno';
+        const dataId = `${anno}-${(mese + 1).toString().padStart(2, '0')}-${g.toString().padStart(2, '0')}`;
         
+        divGiorno.innerText = g;
+        
+        // Simulazione "Esaurito" senza citare i 120 (es. tutti i Sabati pieni)
+        const giornoSettimana = new Date(anno, mese, g).getDay();
+        if (giornoSettimana === 6) { // Sabato
+            divGiorno.classList.add('pieno');
+            divGiorno.title = "Posti esauriti";
+        } else {
+            if (giorniSelezionati.includes(dataId)) divGiorno.classList.add('selezionato');
+            divGiorno.onclick = () => toggleGiorno(divGiorno, dataId);
+        }
         contenitore.appendChild(divGiorno);
     }
 }
 
-// 3. Selezione dei giorni
-function selezionaGiorno(elemento, data) {
-    if (elemento.classList.contains('selezionato')) {
-        // Deseleziona
-        elemento.classList.remove('selezionato');
+function toggleGiorno(elemento, data) {
+    if (giorniSelezionati.includes(data)) {
         giorniSelezionati = giorniSelezionati.filter(d => d !== data);
+        elemento.classList.remove('selezionato');
     } else {
-        // Seleziona
-        elemento.classList.add('selezionato');
         giorniSelezionati.push(data);
+        elemento.classList.add('selezionato');
     }
-    
     document.getElementById('conteggio-giorni').innerText = giorniSelezionati.length;
     document.getElementById('btn-conferma').disabled = giorniSelezionati.length === 0;
 }
 
-// 4. Invio multiplo al Server
 async function confermaPrenotazioni() {
-    // Invia una richiesta per ogni giorno selezionato
-    for (let data of giorniSelezionati) {
-        await inviaSingolaPrenotazione(data);
-    }
-    alert("✅ Tutte le giornate sono state prenotate!");
-    location.reload(); // Riavvia l'app
-}
+    // Ordiniamo le date per il riepilogo
+    giorniSelezionati.sort();
+    const dataInizio = giorniSelezionati[0];
+    const dataFine = giorniSelezionati[giorniSelezionati.length - 1];
 
-async function inviaSingolaPrenotazione(dataScelta) {
-    try {
-        const response = await fetch('/api/prenota', {
+    // Mostra caricamento (opzionale)
+    document.getElementById('calendar-section').style.display = 'none';
+    const successSection = document.getElementById('success-section');
+    successSection.style.display = 'block';
+
+    document.getElementById('riepilogo-dati').innerHTML = `
+        <strong>Utente:</strong> ${npassCorrente}<br>
+        <strong>Email:</strong> ${emailCorrente}<br>
+        <strong>Periodo:</strong> dal ${formattaData(dataInizio)} al ${formattaData(dataFine)}<br>
+        <strong>Totale giorni:</strong> ${giorniSelezionati.length}
+    `;
+
+    // Qui invieresti i dati al server (API)
+    for (let d of giorniSelezionati) {
+        fetch('/api/prenota', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                npass: npassCorrente, // Usiamo l'npass inserito all'inizio
-                nextra: "Prenotazione Multipla V2", 
-                data: dataScelta, 
-                utente: npassCorrente // Per ora usiamo npass anche qui
-            })
+            body: JSON.stringify({ npass: npassCorrente, data: d, utente: emailCorrente })
         });
-        if (!response.ok) console.error("Errore salvataggio giorno:", dataScelta);
-    } catch (error) {
-        console.error("Errore di rete:", error);
     }
+}
+
+function formattaData(isoDate) {
+    const d = new Date(isoDate);
+    return d.toLocaleDateString('it-IT');
 }
