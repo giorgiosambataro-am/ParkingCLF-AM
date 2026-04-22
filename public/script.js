@@ -1,7 +1,7 @@
 async function eseguiPrenotazione(idPosto, nota, dataScelta, nomeUtente) {
     try {
         // Sostituisci l'URL con quello che ti ha dato Render
-        const response = await fetch('https://IL-TUO-LINK-SU-RENDER.onrender.com/api/prenota', {
+        const response = await fetch('https://parkingclf-am.onrender.com/api/prenota', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
