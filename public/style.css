@@ -1,140 +1,17 @@
-:root {
-    --blue-main: #34C1ED;
-    --blue-dark: #1E73BE;
-    --grey-text: #777777;
-    --border-light: #BCE8F1;
+body { font-family: sans-serif; background-color: #e0f2f1; padding: 20px; }
+.booking-grid { 
+    display: grid; 
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); 
+    gap: 20px; 
 }
-
-body {
-    font-family: 'Segoe UI', Arial, sans-serif;
-    background-color: #E9EBEE;
-    margin: 0;
-    padding: 20px;
+.posto-card { 
+    background: white; 
+    padding: 15px; 
+    border-radius: 8px; 
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1); 
+    display: flex; 
+    flex-direction: column; 
+    gap: 10px;
 }
-
-.booking-grid {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 20px;
-    justify-content: center;
-}
-
-/* La Card */
-.card {
-    background: white;
-    width: 320px;
-    border: 1px solid var(--border-light);
-    border-radius: 4px;
-    position: relative;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-    overflow: hidden;
-}
-
-/* Il nastro (Ribbon) */
-.ribbon {
-    position: absolute;
-    top: 12px;
-    left: -35px;
-    background: linear-gradient(45deg, #1e5799 0%, #2989d8 50%, #1e5799 100%);
-    color: white;
-    width: 120px;
-    text-align: center;
-    font-size: 11px;
-    font-weight: bold;
-    transform: rotate(-45deg);
-    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-    z-index: 1;
-}
-
-/* Header della Card */
-.card-header {
-    text-align: center;
-    padding: 10px 0;
-    border-bottom: 1px solid #eee;
-}
-
-.card-header h2 {
-    margin: 0;
-    font-size: 22px;
-    color: #333;
-    font-weight: 500;
-}
-
-.card-header p {
-    margin: 2px 0 0;
-    font-size: 13px;
-    color: var(--grey-text);
-}
-
-/* Corpo della Card */
-.card-body {
-    padding: 15px;
-}
-
-.info-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 10px;
-}
-
-.info-label {
-    font-size: 18px;
-    color: var(--grey-text);
-}
-
-.info-value {
-    font-size: 24px;
-    color: var(--blue-main);
-    font-weight: bold;
-}
-
-/* Area Note */
-textarea {
-    width: 100%;
-    height: 60px;
-    border: 1px solid #ccc;
-    border-radius: 3px;
-    resize: none;
-    font-family: inherit;
-    padding: 5px;
-    box-sizing: border-box;
-    margin-top: 10px;
-    color: #555;
-}
-
-/* Footer */
-.card-footer {
-    padding: 10px 15px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-top: 1px solid #f9f9f9;
-}
-
-.btn-prenota {
-    background-color: var(--blue-main);
-    color: white;
-    border: none;
-    padding: 8px 20px;
-    border-radius: 4px;
-    font-size: 14px;
-    cursor: pointer;
-    font-weight: bold;
-}
-
-.btn-prenota:hover {
-    background-color: #29b0d9;
-}
-
-.icon-group {
-    background-color: var(--blue-main);
-    color: white;
-    width: 30px;
-    height: 30px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 14px;
-}
+button { cursor: pointer; background: #007bff; color: white; border: none; padding: 10px; border-radius: 4px; }
+button:hover { background: #0056b3; }
