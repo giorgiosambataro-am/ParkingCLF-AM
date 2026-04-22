@@ -1,14 +1,20 @@
 let npassCorrente = "";
 let emailCorrente = "";
 let giorniSelezionati = [];
-let dataVisualizzata = new Date(); // Parte da oggi
+let dataVisualizzata = new Date();
 
+// 1. Inizio: Verifica Accesso
 function verificaAccesso() {
     npassCorrente = document.getElementById('npass-input').value.trim();
     emailCorrente = document.getElementById('email-input').value.trim();
 
-    if (!npassCorrente || !emailCorrente.includes('@')) {
-        alert("Inserisci un NPASS valido e una Email corretta!");
+    // Validazione base
+    if (!npassCorrente) {
+        alert("Inserisci il codice NPASS!");
+        return;
+    }
+    if (!emailCorrente || !emailCorrente.includes('@')) {
+        alert("Inserisci un indirizzo email valido!");
         return;
     }
 
@@ -17,11 +23,13 @@ function verificaAccesso() {
     renderizzaCalendario();
 }
 
+// 2. Navigazione Mesi
 function cambiaMese(direzione) {
     dataVisualizzata.setMonth(dataVisualizzata.getMonth() + direzione);
     renderizzaCalendario();
 }
 
+// 3. Generazione Calendario
 function renderizzaCalendario() {
     const contenitore = document.getElementById('calendario-gigante');
     const headerMese = document.getElementById('mese-corrente');
@@ -30,13 +38,15 @@ function renderizzaCalendario() {
     const anno = dataVisualizzata.getFullYear();
     const mese = dataVisualizzata.getMonth();
     
+    // Nome mese e anno in italiano
     headerMese.innerText = new Intl.DateTimeFormat('it-IT', { month: 'long', year: 'numeric' }).format(dataVisualizzata);
 
     const primoGiornoMese = new Date(anno, mese, 1).getDay();
     const giorniNelMese = new Date(anno, mese + 1, 0).getDate();
 
-    // Spazi vuoti per i giorni della settimana precedente
-    for (let i = 0; i < (primoGiornoMese === 0 ? 6 : primoGiornoMese - 1); i++) {
+    // Allineamento giorni (Lunedì come primo giorno)
+    const offset = primoGiornoMese === 0 ? 6 : primoGiornoMese - 1;
+    for (let i = 0; i < offset; i++) {
         contenitore.appendChild(document.createElement('div'));
     }
 
@@ -47,11 +57,10 @@ function renderizzaCalendario() {
         
         divGiorno.innerText = g;
         
-        // Simulazione "Esaurito" senza citare i 120 (es. tutti i Sabati pieni)
+        // Esempio: Sabati e Domeniche "pieni" (simulazione)
         const giornoSettimana = new Date(anno, mese, g).getDay();
-        if (giornoSettimana === 6) { // Sabato
+        if (giornoSettimana === 0 || giornoSettimana === 6) {
             divGiorno.classList.add('pieno');
-            divGiorno.title = "Posti esauriti";
         } else {
             if (giorniSelezionati.includes(dataId)) divGiorno.classList.add('selezionato');
             divGiorno.onclick = () => toggleGiorno(divGiorno, dataId);
@@ -60,6 +69,7 @@ function renderizzaCalendario() {
     }
 }
 
+// 4. Selezione Giorno
 function toggleGiorno(elemento, data) {
     if (giorniSelezionati.includes(data)) {
         giorniSelezionati = giorniSelezionati.filter(d => d !== data);
@@ -72,35 +82,53 @@ function toggleGiorno(elemento, data) {
     document.getElementById('btn-conferma').disabled = giorniSelezionati.length === 0;
 }
 
+// 5. Conferma e Riepilogo Finale
 async function confermaPrenotazioni() {
-    // Ordiniamo le date per il riepilogo
-    giorniSelezionati.sort();
+    // Ordina le date
+    giorniSelezionati.sort((a, b) => new Date(a) - new Date(b));
+    
     const dataInizio = giorniSelezionati[0];
     const dataFine = giorniSelezionati[giorniSelezionati.length - 1];
-
-    // Mostra caricamento (opzionale)
+    
+    // Mostra sezione successo
     document.getElementById('calendar-section').style.display = 'none';
-    const successSection = document.getElementById('success-section');
-    successSection.style.display = 'block';
+    document.getElementById('success-section').style.display = 'block';
+
+    // Genera lista testuale dei giorni
+    const listaHtml = giorniSelezionati.map(d => `<li>${formattaData(d)}</li>`).join('');
 
     document.getElementById('riepilogo-dati').innerHTML = `
-        <strong>Utente:</strong> ${npassCorrente}<br>
-        <strong>Email:</strong> ${emailCorrente}<br>
-        <strong>Periodo:</strong> dal ${formattaData(dataInizio)} al ${formattaData(dataFine)}<br>
-        <strong>Totale giorni:</strong> ${giorniSelezionati.length}
+        <div style="margin-bottom: 15px; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px;">
+            <strong>👤 Utente:</strong> ${npassCorrente}<br>
+            <strong>📧 Email:</strong> ${emailCorrente}
+        </div>
+        <div>
+            <strong>📅 Periodo Prenotato:</strong><br>
+            Dal ${formattaData(dataInizio)} al ${formattaData(dataFine)}<br><br>
+            <strong>Dettaglio giornate (${giorniSelezionati.length}):</strong>
+            <ul>${listaHtml}</ul>
+        </div>
     `;
 
-    // Qui invieresti i dati al server (API)
+    // Invio dati al server (API)
     for (let d of giorniSelezionati) {
-        fetch('/api/prenota', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ npass: npassCorrente, data: d, utente: emailCorrente })
-        });
+        try {
+            await fetch('/api/prenota', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ npass: npassCorrente, data: d, utente: emailCorrente })
+            });
+        } catch (e) {
+            console.error("Errore invio data:", d);
+        }
     }
 }
 
+// Utility per formattare la data in italiano
 function formattaData(isoDate) {
-    const d = new Date(isoDate);
-    return d.toLocaleDateString('it-IT');
+    return new Date(isoDate).toLocaleDateString('it-IT', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+    });
 }
