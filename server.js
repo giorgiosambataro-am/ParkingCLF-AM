@@ -8,100 +8,97 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Configurazione Database CONNESSIONE DIRETTA
+// Configurazione Pool ottimizzata
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: {
-    rejectUnauthorized: false
-  },
-  connectionTimeoutMillis: 5000, 
-  idleTimeoutMillis: 30000,
+  ssl: { rejectUnauthorized: false },
+  connectionTimeoutMillis: 10000,
 });
 
-// Test di connessione immediato
-pool.connect((err, client, release) => {
+// Test di connessione all'avvio
+pool.query('SELECT NOW()', (err) => {
   if (err) {
-    return console.error('❌ ERRORE CONNESSIONE DB:', err.message);
+    console.error('❌ ERRORE CRITICO DB:', err.message);
+  } else {
+    console.log('✅ DATABASE CONNESSO CORRETTAMENTE');
   }
-  console.log('✅ DATABASE CONNESSO CORRETTAMENTE (Porta 5432)');
-  release();
 });
 
 const transporter = nodemailer.createTransport({
   service: 'gmail',
-  auth: { user: 'parkingclf.am@gmail.com', pass: process.env.EMAIL_PASSWORD }
+  auth: { 
+    user: 'parkingclf.am@gmail.com', 
+    pass: process.env.EMAIL_PASSWORD 
+  }
 });
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-// --- VALIDAZIONE PASS ---
 app.post('/api/valida-pass', async (req, res) => {
     const { npass } = req.body;
-    console.log("Tentativo accesso per:", npass);
-    
     try {
-        // Usiamo una query semplice per testare
-        const query = 'SELECT ruolo FROM registro_pass WHERE UPPER(npass) = $1';
-        const result = await pool.query(query, [npass.toUpperCase()]);
+        const result = await pool.query(
+            'SELECT ruolo FROM registro_pass WHERE UPPER(npass) = $1', 
+            [npass.toUpperCase()]
+        );
         
         if (result.rows.length > 0) {
-            console.log("Pass trovato! Ruolo:", result.rows[0].ruolo);
-            // Aggiorniamo l'ultimo accesso
-            await pool.query('UPDATE registro_pass SET ultimo_accesso = NOW() WHERE UPPER(npass) = $1', [npass.toUpperCase()]);
-            
-            res.json({ 
-                valid: true, 
-                ruolo: result.rows[0].ruolo 
-            });
+            await pool.query(
+                'UPDATE registro_pass SET ultimo_accesso = NOW() WHERE UPPER(npass) = $1', 
+                [npass.toUpperCase()]
+            );
+            res.json({ valid: true, ruolo: result.rows[0].ruolo });
         } else {
-            console.log("Pass non trovato nel DB");
-            res.json({ valid: false, message: "Pass non autorizzato." });
+            res.json({ valid: false, message: "Pass non trovato." });
         }
     } catch (err) {
-        console.error("ERRORE DURANTE LA QUERY:", err.message);
+        console.error("Errore query login:", err.message);
         res.status(500).json({ error: "Errore database", details: err.message });
     }
 });
 
-// --- PRENOTAZIONE ---
 app.post('/api/prenota', async (req, res) => {
     const { npass, giorni, utente } = req.body;
     try {
         for (let data of giorni) {
-            await pool.query('INSERT INTO prenotazioni (npass, data_prenotata) VALUES ($1, $2)', [npass.toUpperCase(), data]);
+            await pool.query(
+                'INSERT INTO prenotazioni (npass, data_prenotata) VALUES ($1, $2)', 
+                [npass.toUpperCase(), data]
+            );
         }
         
         const periodo = `dal ${new Date(giorni[0]).toLocaleDateString('it-IT')} al ${new Date(giorni[giorni.length-1]).toLocaleDateString('it-IT')}`;
-        await pool.query('UPDATE registro_pass SET ult_pren = $1 WHERE UPPER(npass) = $2', [periodo, npass.toUpperCase()]);
+        await pool.query(
+            'UPDATE registro_pass SET ult_pren = $1 WHERE UPPER(npass) = $2', 
+            [periodo, npass.toUpperCase()]
+        );
 
         const mailOptions = {
             from: 'parkingclf.am@gmail.com',
             to: utente,
             cc: 'parkingclf.am@gmail.com',
             subject: `Conferma Parcheggio C.L. Fontanarossa - ${npass}`,
-            html: `<h3>Prenotazione Confermata</h3><p>Gentile utente ${npass}, il periodo prenotato è: <b>${periodo}</b>.</p>`
+            html: `<h3>Prenotazione Confermata</h3><p>Periodo: <b>${periodo}</b></p>`
         };
         await transporter.sendMail(mailOptions);
         res.json({ success: true });
     } catch (err) {
-        console.error("Errore Salvataggio:", err.message);
-        res.status(500).json({ error: "Errore durante la prenotazione" });
+        console.error("Errore prenotazione:", err.message);
+        res.status(500).json({ error: "Errore salvataggio" });
     }
 });
 
-// --- STATISTICHE ADMIN ---
 app.get('/api/admin-stats', async (req, res) => {
     try {
-        const query = `
+        const result = await pool.query(`
             SELECT data_prenotata as data, COUNT(*) as occupati, (120 - COUNT(*)) as liberi 
             FROM prenotazioni 
             WHERE data_prenotata >= CURRENT_DATE 
             GROUP BY data_prenotata ORDER BY data_prenotata ASC
-        `;
-        const result = await pool.query(query);
+        `);
         res.json(result.rows);
     } catch (err) {
-        res.status(500).json({ error: "Errore caricamento statistiche" });
+        res.status(500).json({ error: "Errore statistiche" });
     }
 });
 
