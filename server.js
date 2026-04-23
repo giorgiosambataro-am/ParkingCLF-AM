@@ -41,26 +41,30 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 app.post('/api/valida-pass', async (req, res) => {
     const { npass } = req.body;
+    console.log("Controllo NPASS richiesto:", npass); // Log per debug
+    
     try {
-        const result = await pool.query(
-            'SELECT ruolo FROM registro_pass WHERE UPPER(npass) = $1', 
-            [npass.toUpperCase()]
-        );
+        // Cerchiamo nel nuovo registro_pass
+        const query = 'SELECT ruolo FROM registro_pass WHERE UPPER(npass) = $1';
+        const result = await pool.query(query, [npass.toUpperCase().trim()]);
         
         if (result.rows.length > 0) {
-            await pool.query(
-                'UPDATE registro_pass SET ultimo_accesso = NOW() WHERE UPPER(npass) = $1', 
-                [npass.toUpperCase()]
-            );
+            console.log("✅ PASS TROVATO! Ruolo:", result.rows[0].ruolo);
+            
+            // Aggiorniamo l'accesso (opzionale, se fallisce non blocca il login)
+            pool.query('UPDATE registro_pass SET ultimo_accesso = NOW() WHERE UPPER(npass) = $1', [npass.toUpperCase()]).catch(e => console.log("Errore update log:", e.message));
+
             res.json({ valid: true, ruolo: result.rows[0].ruolo });
         } else {
-            res.json({ valid: false, message: "Pass non trovato." });
+            console.log("❌ PASS NON TROVATO nel database registro_pass");
+            res.json({ valid: false, message: "NPASS non autorizzato o errato." });
         }
     } catch (err) {
-        console.error("Errore query login:", err.message);
+        console.error("🔥 ERRORE QUERY:", err.message);
         res.status(500).json({ error: "Errore database", details: err.message });
     }
 });
+
 
 app.post('/api/prenota', async (req, res) => {
     const { npass, giorni, utente } = req.body;
