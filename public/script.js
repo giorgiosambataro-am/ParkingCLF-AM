@@ -4,23 +4,31 @@ let giorniSelezionati = [];
 let dataVisualizzata = new Date();
 
 // 1. Inizio: Verifica Accesso
-function verificaAccesso() {
-    npassCorrente = document.getElementById('npass-input').value.trim();
-    emailCorrente = document.getElementById('email-input').value.trim();
+async function verificaAccesso() {
+    const npass = document.getElementById('npass').value.toUpperCase();
+    
+    if (!npass) return alert("Inserisci un NPASS");
 
-    // Validazione base
-    if (!npassCorrente) {
-        alert("Inserisci il codice NPASS!");
-        return;
-    }
-    if (!emailCorrente || !emailCorrente.includes('@')) {
-        alert("Inserisci un indirizzo email valido!");
-        return;
-    }
+    try {
+        const response = await fetch('/api/valida-pass', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ npass: npass })
+        });
+        const data = await response.json();
 
-    document.getElementById('login-section').style.display = 'none';
-    document.getElementById('calendar-section').style.display = 'block';
-    renderizzaCalendario();
+        if (data.valid) {
+            npassCorrente = npass;
+            emailCorrente = data.email; // Prende l'email direttamente dal DB se vuoi
+            document.getElementById('login-section').style.display = 'none';
+            document.getElementById('calendar-section').style.display = 'block';
+            generaCalendario();
+        } else {
+            alert("⚠️ " + data.message);
+        }
+    } catch (e) {
+        alert("Errore di connessione al server");
+    }
 }
 
 // 2. Navigazione Mesi
