@@ -1,17 +1,50 @@
+const express = require('express');
+const { Pool } = require('pg');
+const path = require('path');
+const cors = require('cors');
+const nodemailer = require('nodemailer');
+
+// QUESTA RIGA È FONDAMENTALE: crea l'oggetto app
+const app = express();
+
+app.use(cors());
+app.use(express.json());
+
+// 1. Configurazione Database (Supabase)
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false }
+});
+
+// 2. Configurazione Postino (Gmail)
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: 'parkingclf.am@gmail.com',
+    pass: process.env.EMAIL_PASSWORD 
+  }
+});
+
+// 3. File Statici
+app.use(express.static(path.join(__dirname, 'public')));
+
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// 4. Rotta Prenotazioni
 app.post('/api/prenota', async (req, res) => {
     const { npass, data, utente } = req.body;
     
-    // 1. Proviamo a salvare nel Database
     try {
-        const queryInsert = 'INSERT INTO prenotazioni (npass, data, utente) VALUES ($1, $2, $3)';
-        await pool.query(queryInsert, [npass, data, utente]);
-        console.log("Salvataggio DB riuscito");
+        // Salva nel Database
+        await pool.query('INSERT INTO prenotazioni (npass, data, utente) VALUES ($1, $2, $3)', [npass, data, utente]);
+        console.log("DB OK");
     } catch (err) {
-        console.error("Errore Database (ma procedo con la mail):", err.message);
-        // NON blocchiamo l'esecuzione qui, così la mail parte comunque
+        console.error("Errore DB:", err.message);
     }
 
-    // 2. Prepariamo e inviamo la Mail
+    // Invia Mail
     const mailOptions = {
         from: 'parkingclf.am@gmail.com',
         to: utente, 
@@ -28,12 +61,14 @@ app.post('/api/prenota', async (req, res) => {
         `
     };
 
-    transporter.sendMail(mailOptions, (error, info) => {
-        if (error) {
-            console.log("Errore mail:", error);
-            return res.status(500).json({ error: "Errore invio mail" });
-        }
-        console.log("Mail inviata!");
-        res.json({ success: true, message: "Operazione completata" });
+    transporter.sendMail(mailOptions, (error) => {
+        if (error) console.log("Errore mail:", error);
+        res.json({ success: true });
     });
+});
+
+// 5. Avvio
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+    console.log(`Server acceso sulla porta ${PORT}`);
 });
