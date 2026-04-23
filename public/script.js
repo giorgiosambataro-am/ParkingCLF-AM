@@ -84,18 +84,14 @@ function toggleGiorno(elemento, data) {
 
 // 5. Conferma e Riepilogo Finale
 async function confermaPrenotazioni() {
-    // Ordina le date
     giorniSelezionati.sort((a, b) => new Date(a) - new Date(b));
     
-    const dataInizio = giorniSelezionati[0];
-    const dataFine = giorniSelezionati[giorniSelezionati.length - 1];
-    
-    // Mostra sezione successo
+    const dataInizio = formattaData(giorniSelezionati[0]);
+    const dataFine = formattaData(giorniSelezionati[giorniSelezionati.length - 1]);
+    const listaHtml = giorniSelezionati.map(d => `<li>${formattaData(d)}</li>`).join('');
+
     document.getElementById('calendar-section').style.display = 'none';
     document.getElementById('success-section').style.display = 'block';
-
-    // Genera lista testuale dei giorni
-    const listaHtml = giorniSelezionati.map(d => `<li>${formattaData(d)}</li>`).join('');
 
     document.getElementById('riepilogo-dati').innerHTML = `
         <div style="margin-bottom: 15px; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px;">
@@ -103,24 +99,25 @@ async function confermaPrenotazioni() {
             <strong>📧 Email:</strong> ${emailCorrente}
         </div>
         <div>
-            <strong>📅 Periodo Prenotato:</strong><br>
-            Dal ${formattaData(dataInizio)} al ${formattaData(dataFine)}<br><br>
-            <strong>Dettaglio giornate (${giorniSelezionati.length}):</strong>
+            <strong>📅 Periodo:</strong> dal ${dataInizio} al ${dataFine}<br>
+            <strong>✅ Giorni confermati:</strong>
             <ul>${listaHtml}</ul>
         </div>
     `;
 
-    // Invio dati al server (API)
-    for (let d of giorniSelezionati) {
-        try {
-            await fetch('/api/prenota', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ npass: npassCorrente, data: d, utente: emailCorrente })
-            });
-        } catch (e) {
-            console.error("Errore invio data:", d);
-        }
+    // MANDIAMO TUTTO IN UN UNICO INVIO
+    try {
+        await fetch('/api/prenota', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                npass: npassCorrente, 
+                giorni: giorniSelezionati, // Inviamo l'array completo
+                utente: emailCorrente 
+            })
+        });
+    } catch (e) {
+        console.error("Errore invio:", e);
     }
 }
 
