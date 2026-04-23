@@ -43,19 +43,49 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// 4. Rotta Prenotazioni (Mail Singola Riepilogativa)
+// --- NUOVA ROTTA: Validazione Pass ---
+app.post('/api/valida-pass', async (req, res) => {
+    const { npass } = req.body;
+    try {
+        const result = await pool.query('SELECT * FROM utenti_autorizzati WHERE npass = $1', [npass]);
+        
+        if (result.rows.length > 0) {
+            res.json({ valid: true, email: result.rows[0].utente_email });
+        } else {
+            res.json({ valid: false, message: "Pass non riconosciuto o non autorizzato." });
+        }
+    } catch (err) {
+        res.status(500).json({ error: "Errore controllo pass" });
+    }
+});
+
+// --- ROTTA AGGIORNATA: Prenotazione ---
 app.post('/api/prenota', async (req, res) => {
     const { npass, giorni, utente } = req.body;
     
-    // Prova il salvataggio, ma non bloccare tutto se fallisce
     try {
+        // 1. Salva i singoli giorni nel DB
         for (let data of giorni) {
             await pool.query('INSERT INTO prenotazioni (npass, data, utente) VALUES ($1, $2, $3)', [npass, data, utente]);
         }
-        console.log("Dati salvati su Supabase");
+
+        // 2. Calcola il testo per "ult_pren"
+        const dataInizio = new Date(giorni[0]).toLocaleDateString('it-IT');
+        const dataFine = new Date(giorni[giorni.length - 1]).toLocaleDateString('it-IT');
+        const testoUltPren = `dal ${dataInizio} al ${dataFine}`;
+
+        // 3. AGGIORNA la tabella master utenti_autorizzati
+        await pool.query('UPDATE utenti_autorizzati SET ult_pren = $1 WHERE npass = $2', [testoUltPren, npass]);
+
+        // 4. Invio Mail (già configurato)
+        // ... (il tuo codice mailOptions e transporter.sendMail)
+        
+        res.json({ success: true });
     } catch (err) {
-        console.error("Database non raggiungibile, procedo solo con invio mail:", err.message);
+        console.error(err);
+        res.status(500).json({ error: "Errore registrazione" });
     }
+});
 
     // Costruzione Mail
     const dataInizio = new Date(giorni[0]).toLocaleDateString('it-IT');
