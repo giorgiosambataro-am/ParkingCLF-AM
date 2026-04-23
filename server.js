@@ -8,9 +8,22 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Configurazione Database ultra-stabile
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
+  ssl: {
+    rejectUnauthorized: false // Indispensabile per Supabase su Render
+  },
+  connectionTimeoutMillis: 10000, // Aspetta 10 secondi prima di andare in errore
+});
+
+// Questo log ti dirà nei Logs di Render se il DB è davvero connesso
+pool.connect((err, client, release) => {
+  if (err) {
+    return console.error('❌ ERRORE CONNESSIONE DB:', err.stack);
+  }
+  console.log('✅ DATABASE CONNESSO CON SUCCESSO');
+  release();
 });
 
 const transporter = nodemailer.createTransport({
@@ -24,17 +37,28 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.post('/api/valida-pass', async (req, res) => {
     const { npass } = req.body;
     console.log("Tentativo accesso per:", npass);
+    
     try {
-        const result = await pool.query('SELECT ruolo FROM registro_pass WHERE UPPER(npass) = $1', [npass.toUpperCase()]);
+        // Usiamo una query semplice per testare
+        const query = 'SELECT ruolo FROM registro_pass WHERE UPPER(npass) = $1';
+        const result = await pool.query(query, [npass.toUpperCase()]);
+        
         if (result.rows.length > 0) {
+            console.log("Pass trovato! Ruolo:", result.rows[0].ruolo);
+            // Aggiorniamo l'ultimo accesso
             await pool.query('UPDATE registro_pass SET ultimo_accesso = NOW() WHERE UPPER(npass) = $1', [npass.toUpperCase()]);
-            res.json({ valid: true, ruolo: result.rows[0].ruolo });
+            
+            res.json({ 
+                valid: true, 
+                ruolo: result.rows[0].ruolo 
+            });
         } else {
-            res.json({ valid: false, message: "Pass non trovato nel database." });
+            console.log("Pass non trovato nel DB");
+            res.json({ valid: false, message: "Pass non autorizzato." });
         }
     } catch (err) {
-        console.error("Errore Database:", err.message);
-        res.status(500).json({ error: "Errore interno del server" });
+        console.error("ERRORE DURANTE LA QUERY:", err.message);
+        res.status(500).json({ error: "Errore database", details: err.message });
     }
 });
 
