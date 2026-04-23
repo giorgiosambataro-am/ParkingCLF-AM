@@ -1,41 +1,45 @@
-const express = require('express');
-const { Pool } = require('pg');
-const path = require('path');
-const cors = require('cors');
+const nodemailer = require('nodemailer');
 
-const app = express();
-app.use(cors());
-app.use(express.json());
-
-// 1. Configurazione Database
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
+// Configurazione Postino (usa la variabile di Render)
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: 'parkingclf.am@gmail.com',
+    pass: process.env.EMAIL_PASSWORD 
+  }
 });
 
-// 2. Istruzione per leggere i file grafici
-// Assicurati che la cartella si chiami 'public' su GitHub!
-app.use(express.static(path.join(__dirname, 'public')));
-
-// 3. Istruzione specifica per l'indirizzo principale
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-// 4. La tua API per le prenotazioni
+// Modifica la rotta di prenotazione
 app.post('/api/prenota', async (req, res) => {
-    const { npass, nextra, data, utente } = req.body;
+    const { npass, data, utente } = req.body;
+    
     try {
-        const queryInsert = 'INSERT INTO prenotazioni (npass, nextra, data, utente) VALUES ($1, $2, $3, $4)';
-        await pool.query(queryInsert, [npass, nextra, data, utente]);
-        res.json({ success: true, message: "Prenotazione salvata!" });
+        // 1. Salva nel Database
+        await pool.query('INSERT INTO prenotazioni (npass, data, utente) VALUES ($1, $2, $3)', [npass, data, utente]);
+
+        // 2. Invia Mail di conferma
+        const mailOptions = {
+            from: 'parkingclf.am@gmail.com',
+            to: utente, // La mail dell'utente
+            cc: 'parkingclf.am@gmail.com',
+            subject: `Conferma Prenotazione - NPASS: ${npass}`,
+            html: `
+                <div style="font-family: sans-serif; border: 2px solid #2563eb; padding: 20px; border-radius: 15px;">
+                    <h2 style="color: #2563eb;">🅿️ Prenotazione Confermata</h2>
+                    <p>Gentile utente <b>${npass}</b>,</p>
+                    <p>Abbiamo registrato la tua richiesta per il giorno: <b>${data}</b></p>
+                    <p>Riceverai ulteriori comunicazioni in caso di variazioni.</p>
+                    <hr style="border: 0; border-top: 1px solid #eee;">
+                    <p style="font-size: 0.8rem; color: #999;">Sistema Automatico Parcheggi - Logistica</p>
+                </div>
+            `
+        };
+
+        transporter.sendMail(mailOptions); // Invia in background
+
+        res.json({ success: true });
     } catch (err) {
         console.error(err);
-        res.status(500).json({ error: "Errore database" });
+        res.status(500).json({ error: "Errore durante la prenotazione" });
     }
-});
-
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log(`Server acceso sulla porta ${PORT}`);
 });
