@@ -3,7 +3,7 @@ let giorniSelezionati = [];
 
 async function verificaAccesso() {
     const npassInput = document.getElementById('npass').value.trim();
-    if (!npassInput) return alert("Per favore, inserisci un NPASS.");
+    if (!npassInput) return alert("Inserisci un NPASS");
 
     try {
         const response = await fetch('/api/valida-pass', {
@@ -11,7 +11,14 @@ async function verificaAccesso() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ npass: npassInput })
         });
-        
+
+        // Se il server risponde male (es. errore 500)
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error("Errore server:", errorText);
+            return alert("Errore del server: " + response.status);
+        }
+
         const data = await response.json();
 
         if (data.valid) {
@@ -22,15 +29,14 @@ async function verificaAccesso() {
                 mostraAdminDashboard();
             } else {
                 document.getElementById('calendar-section').style.display = 'block';
-                // Qui dovresti chiamare la funzione per generare il calendario
-                // generaCalendario(); 
+                if (typeof generaCalendario === "function") generaCalendario();
             }
         } else {
-            alert("⚠️ " + data.message);
+            alert(data.message || "Accesso negato");
         }
     } catch (error) {
-        console.error("Errore:", error);
-        alert("Impossibile connettersi al server. Riprova più tardi.");
+        console.error("Errore connessione:", error);
+        alert("Errore di connessione: il server non risponde.");
     }
 }
 
