@@ -6,29 +6,40 @@ let dataVisualizzata = new Date();
 // 1. Inizio: Verifica Accesso
 async function verificaAccesso() {
     const npass = document.getElementById('npass').value.toUpperCase();
-    
-    if (!npass) return alert("Inserisci un NPASS");
+    const res = await fetch('/api/valida-pass', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ npass })
+    });
+    const data = await res.json();
 
-    try {
-        const response = await fetch('/api/valida-pass', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ npass: npass })
-        });
-        const data = await response.json();
-
-        if (data.valid) {
-            npassCorrente = npass;
-            emailCorrente = data.email; // Prende l'email direttamente dal DB se vuoi
-            document.getElementById('login-section').style.display = 'none';
+    if (data.valid) {
+        npassCorrente = npass;
+        document.getElementById('login-section').style.display = 'none';
+        
+        if (data.ruolo === 'admin') {
+            mostraAdminDashboard();
+        } else {
             document.getElementById('calendar-section').style.display = 'block';
             generaCalendario();
-        } else {
-            alert("⚠️ " + data.message);
         }
-    } catch (e) {
-        alert("Errore di connessione al server");
+    } else {
+        alert(data.message);
     }
+}
+
+async function mostraAdminDashboard() {
+    document.getElementById('admin-section').style.display = 'block';
+    const res = await fetch('/api/admin-stats');
+    const stats = await res.json();
+    const body = document.getElementById('admin-table-body');
+    body.innerHTML = stats.map(s => `
+        <tr>
+            <td style="padding:10px; border:1px solid #ddd;">${new Date(s.data).toLocaleDateString('it-IT')}</td>
+            <td style="padding:10px; border:1px solid #ddd; text-align:center;">${s.occupati}</td>
+            <td style="padding:10px; border:1px solid #ddd; text-align:center; color: ${s.liberi < 10 ? 'red' : 'green'}; font-weight:bold;">${s.liberi}</td>
+        </tr>
+    `).join('');
 }
 
 // 2. Navigazione Mesi
