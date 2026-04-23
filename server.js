@@ -11,16 +11,21 @@ app.use(express.json());
 // Configurazione Pool ottimizzata
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
+  ssl: {
+    rejectUnauthorized: false
+  },
+  // Impostazioni specifiche per il Pooler (pgbouncer)
+  max: 20,
+  idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 10000,
 });
 
-// Test di connessione all'avvio
-pool.query('SELECT NOW()', (err) => {
+// Test migliorato
+pool.query('SELECT 1', (err) => {
   if (err) {
-    console.error('❌ ERRORE CRITICO DB:', err.message);
+    console.error('❌ ERRORE DI CONNESSIONE AL POOLER:', err.message);
   } else {
-    console.log('✅ DATABASE CONNESSO CORRETTAMENTE');
+    console.log('✅ CONNESSIONE STABILITA VIA POOLER (IPv4)');
   }
 });
 
