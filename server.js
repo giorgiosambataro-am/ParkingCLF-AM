@@ -8,116 +8,68 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// 1. Configurazione Database (Connessione Diretta)
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: {
-    rejectUnauthorized: false
-  },
-  connectionTimeoutMillis: 5000, // aspetta max 5 secondi
-  idleTimeoutMillis: 10000,       // chiudi connessioni inattive dopo 10s
+  ssl: { rejectUnauthorized: false }
 });
 
-// Test di connessione immediato all'avvio
-pool.query('SELECT NOW()', (err, res) => {
-  if (err) {
-    console.error('❌ ERRORE CRITICO CONNESSIONE DB:', err.message);
-  } else {
-    console.log('✅ DATABASE CONNESSO CORRETTAMENTE');
-  }
-});
-
-// 2. Configurazione Postino (Gmail)
 const transporter = nodemailer.createTransport({
   service: 'gmail',
-  auth: {
-    user: 'parkingclf.am@gmail.com',
-    pass: process.env.EMAIL_PASSWORD 
-  }
+  auth: { user: 'parkingclf.am@gmail.com', pass: process.env.EMAIL_PASSWORD }
 });
 
-// 3. File Statici
 app.use(express.static(path.join(__dirname, 'public')));
 
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-// --- NUOVA ROTTA: Validazione Pass ---
+// --- 1. LOGIN CON CONTROLLO RUOLO ---
 app.post('/api/valida-pass', async (req, res) => {
     const { npass } = req.body;
     try {
-        const result = await pool.query('SELECT * FROM utenti_autorizzati WHERE npass = $1', [npass]);
-        
+        const result = await pool.query('SELECT ruolo FROM registro_pass WHERE npass = $1', [npass.toUpperCase()]);
         if (result.rows.length > 0) {
-            res.json({ valid: true, email: result.rows[0].utente_email });
+            await pool.query('UPDATE registro_pass SET ultimo_accesso = NOW() WHERE npass = $1', [npass.toUpperCase()]);
+            res.json({ valid: true, ruolo: result.rows[0].ruolo });
         } else {
-            res.json({ valid: false, message: "Pass non riconosciuto o non autorizzato." });
+            res.json({ valid: false, message: "Pass non autorizzato." });
         }
-    } catch (err) {
-        res.status(500).json({ error: "Errore controllo pass" });
-    }
+    } catch (err) { res.status(500).json({ error: "Errore login" }); }
 });
 
-// --- ROTTA AGGIORNATA: Prenotazione ---
+// --- 2. PRENOTAZIONE + AGGIORNAMENTO RIEPILOGO ---
 app.post('/api/prenota', async (req, res) => {
     const { npass, giorni, utente } = req.body;
-    
     try {
-        // 1. Salva i singoli giorni nel DB
         for (let data of giorni) {
-            await pool.query('INSERT INTO prenotazioni (npass, data, utente) VALUES ($1, $2, $3)', [npass, data, utente]);
+            await pool.query('INSERT INTO prenotazioni (npass, data_prenotata) VALUES ($1, $2)', [npass, data]);
         }
-
-        // 2. Calcola il testo per "ult_pren"
-        const dataInizio = new Date(giorni[0]).toLocaleDateString('it-IT');
-        const dataFine = new Date(giorni[giorni.length - 1]).toLocaleDateString('it-IT');
-        const testoUltPren = `dal ${dataInizio} al ${dataFine}`;
-
-        // 3. AGGIORNA la tabella master utenti_autorizzati
-        await pool.query('UPDATE utenti_autorizzati SET ult_pren = $1 WHERE npass = $2', [testoUltPren, npass]);
-
-        // 4. Invio Mail (già configurato)
-        // ... (il tuo codice mailOptions e transporter.sendMail)
         
+        const periodo = `dal ${new Date(giorni[0]).toLocaleDateString('it-IT')} al ${new Date(giorni[giorni.length-1]).toLocaleDateString('it-IT')}`;
+        await pool.query('UPDATE registro_pass SET ult_pren = $1 WHERE npass = $2', [periodo, npass]);
+
+        const mailOptions = {
+            from: 'parkingclf.am@gmail.com',
+            to: utente,
+            cc: 'parkingclf.am@gmail.com',
+            subject: `Conferma Parcheggio C.L. Fontanarossa - ${npass}`,
+            html: `<h3>Prenotazione Confermata</h3><p>Periodo: ${periodo}</p>`
+        };
+        await transporter.sendMail(mailOptions);
         res.json({ success: true });
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: "Errore registrazione" });
-    }
+    } catch (err) { res.status(500).json({ error: "Errore salvataggio" }); }
 });
 
-    // Costruzione Mail
-    const dataInizio = new Date(giorni[0]).toLocaleDateString('it-IT');
-    const dataFine = new Date(giorni[giorni.length - 1]).toLocaleDateString('it-IT');
-    const listaGiorni = giorni.map(d => new Date(d).toLocaleDateString('it-IT')).join(', ');
-
-    const mailOptions = {
-        from: 'parkingclf.am@gmail.com',
-        to: utente,
-        cc: 'parkingclf.am@gmail.com',
-        subject: `Conferma Prenotazione C.L. Fontanarossa - ${npass}`,
-        html: `
-            <div style="font-family: sans-serif; border: 2px solid #2563eb; padding: 20px; border-radius: 15px;">
-                <h2 style="color: #2563eb;">🅿️ Parcheggio C.L. Fontanarossa</h2>
-                <p>Gentile utente <b>${npass}</b>, la tua prenotazione è confermata.</p>
-                <p><b>Periodo:</b> dal ${dataInizio} al ${dataFine}</p>
-                <p><b>Giorni:</b> ${listaGiorni}</p>
-                <hr>
-                <p style="font-size: 0.8rem;">Sistema di prenotazione Parcheggio C.L. Fontanarossa</p>
-            </div>
-        `
-    };
-
-    transporter.sendMail(mailOptions, (error) => {
-        if (error) console.log("Errore invio mail:", error);
-        // Rispondi sempre OK al cliente così vede il messaggio di successo
-        res.json({ success: true });
-    });
+// --- 3. DASHBOARD ADMIN (Dati occupazione) ---
+app.get('/api/admin-stats', async (req, res) => {
+    try {
+        const query = `
+            SELECT data_prenotata as data, COUNT(*) as occupati, (120 - COUNT(*)) as liberi 
+            FROM prenotazioni 
+            WHERE data_prenotata >= CURRENT_DATE 
+            GROUP BY data_prenotata ORDER BY data_prenotata ASC
+        `;
+        const result = await pool.query(query);
+        res.json(result.rows);
+    } catch (err) { res.status(500).json({ error: "Errore stats" }); }
 });
 
-// 5. Avvio Server
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log(`Server acceso sulla porta ${PORT}`);
-});
+app.listen(PORT, () => console.log(`Server attivo sulla porta ${PORT}`));
