@@ -3,55 +3,44 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Prenotazione Parcheggio C.L. Fontanarossa</title>
+    <title>Parcheggio C.L. Fontanarossa</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="main-container">
-        <div id="login-section" class="card fade-in">
-            <div class="logo">🅿️</div>
-            <h1>Accesso Portale</h1>
-            <input type="text" id="npass-input" placeholder="Codice NPASS (Obbligatorio)">
-            <input type="email" id="email-input" placeholder="Tua Email (Per conferma)">
-            <button onclick="verificaAccesso()">Accedi al Calendario</button>
+    <div class="container">
+        <h1>Parcheggio C.L. Fontanarossa</h1>
+
+        <div id="login-section" class="card">
+            <h2>Accedi con il tuo Pass</h2>
+            <input type="text" id="npass" placeholder="Inserisci NPASS (es. D003A)" style="text-transform: uppercase;">
+            <button onclick="verificaAccesso()">Entra</button>
         </div>
 
-        <div id="calendar-section" class="card fade-in" style="display: none;">
-            <div class="calendar-header">
-                <button onclick="cambiaMese(-1)">◀</button>
-                <h2 id="mese-corrente">Maggio 2026</h2>
-                <button onclick="cambiaMese(1)">▶</button>
-            </div>
-            
-            <div id="calendario-gigante" class="grid-calendario"></div>
-
-            <div class="footer-calendar">
-                <p>Selezionati: <strong id="conteggio-giorni">0</strong> giorni</p>
-                <button onclick="confermaPrenotazioni()" id="btn-conferma" disabled>Conferma e Invia Email</button>
-            </div>
+        <div id="calendar-section" class="card" style="display:none;">
+            <h3>Seleziona i giorni</h3>
+            <div id="calendar-grid"></div>
+            <input type="email" id="email-utente" placeholder="Tua Email per la ricevuta">
+            <button onclick="confermaPrenotazioni()">Conferma Prenotazione</button>
         </div>
 
-<div id="admin-section" style="display:none; padding: 20px; background: white; border-radius: 15px; margin-top: 20px;">
-    <h2 style="color: #2563eb;">📊 Cruscotto Amministratore</h2>
-    <table style="width: 100%; border-collapse: collapse;">
-        <thead>
-            <tr style="background: #f1f5f9;">
-                <th style="padding: 10px; border: 1px solid #ddd;">Data</th>
-                <th style="padding: 10px; border: 1px solid #ddd;">Posti Occupati</th>
-                <th style="padding: 10px; border: 1px solid #ddd;">Posti Liberi</th>
-            </tr>
-        </thead>
-        <tbody id="admin-table-body">
-            </tbody>
-    </table>
-    <button onclick="location.reload()" style="margin-top:20px; background: #64748b; color:white; border:none; padding:10px 20px; border-radius:10px;">Esci</button>
-</div>
+        <div id="admin-section" class="card" style="display:none;">
+            <h2 style="color: #2563eb;">📊 Cruscotto Amministratore</h2>
+            <table border="1" style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+                <thead>
+                    <tr style="background: #eee;">
+                        <th>Data</th>
+                        <th>Occupati</th>
+                        <th>Liberi</th>
+                    </tr>
+                </thead>
+                <tbody id="admin-table-body"></tbody>
+            </table>
+            <button onclick="location.reload()" style="margin-top:20px; background:#64748b;">Esci</button>
+        </div>
 
-        <div id="success-section" class="card fade-in" style="display: none;">
-            <div class="success-icon">✅</div>
-            <h2>Prenotazione Effettuata!</h2>
-            <div id="riepilogo-dati"></div>
-            <p class="nota-email">La conferma è stata inviata all'indirizzo riportato.</p>
+        <div id="success-section" class="card" style="display:none;">
+            <h2>✅ Prenotazione Inviata!</h2>
+            <p>Controlla la tua email per la conferma.</p>
             <button onclick="location.reload()">Torna alla Home</button>
         </div>
     </div>
