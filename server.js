@@ -8,21 +8,22 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Configurazione Database ultra-stabile
+// Configurazione Database CONNESSIONE DIRETTA
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: {
-    rejectUnauthorized: false // Indispensabile per Supabase su Render
+    rejectUnauthorized: false
   },
-  connectionTimeoutMillis: 10000, // Aspetta 10 secondi prima di andare in errore
+  connectionTimeoutMillis: 5000, 
+  idleTimeoutMillis: 30000,
 });
 
-// Questo log ti dirà nei Logs di Render se il DB è davvero connesso
+// Test di connessione immediato
 pool.connect((err, client, release) => {
   if (err) {
-    return console.error('❌ ERRORE CONNESSIONE DB:', err.stack);
+    return console.error('❌ ERRORE CONNESSIONE DB:', err.message);
   }
-  console.log('✅ DATABASE CONNESSO CON SUCCESSO');
+  console.log('✅ DATABASE CONNESSO CORRETTAMENTE (Porta 5432)');
   release();
 });
 
