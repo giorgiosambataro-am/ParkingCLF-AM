@@ -4,9 +4,7 @@ const path = require('path');
 const cors = require('cors');
 const nodemailer = require('nodemailer');
 
-// QUESTA RIGA È FONDAMENTALE: crea l'oggetto app
 const app = express();
-
 app.use(cors());
 app.use(express.json());
 
@@ -32,17 +30,17 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// 4. Rotta Prenotazioni
+// 4. Rotta Prenotazioni (Mail Singola Riepilogativa)
 app.post('/api/prenota', async (req, res) => {
-    const { npass, giorni, utente } = req.body; // Riceve 'giorni' come array
+    const { npass, giorni, utente } = req.body;
     
     try {
-        // 1. Salvataggio multiplo nel Database
-        for (let data della lista giorni) {
+        // Salvataggio multiplo nel Database
+        for (let data of giorni) {
             await pool.query('INSERT INTO prenotazioni (npass, data, utente) VALUES ($1, $2, $3)', [npass, data, utente]);
         }
 
-        // 2. Prepariamo i dati per la mail singola
+        // Preparazione date per la mail
         const dataInizio = new Date(giorni[0]).toLocaleDateString('it-IT');
         const dataFine = new Date(giorni[giorni.length - 1]).toLocaleDateString('it-IT');
         const listaGiorniTesto = giorni.map(d => new Date(d).toLocaleDateString('it-IT')).join(', ');
@@ -57,11 +55,11 @@ app.post('/api/prenota', async (req, res) => {
                     <h2 style="color: #2563eb; text-align: center;">🅿️ Parcheggio C.L. Fontanarossa</h2>
                     <p>Gentile utente <b>${npass}</b>,</p>
                     <p>Abbiamo registrato correttamente la tua prenotazione.</p>
-                    <div style="background: #f1f5f9; padding: 15px; border-radius: 10px;">
+                    <div style="background: #f1f5f9; padding: 15px; border-radius: 10px; border-left: 5px solid #2563eb;">
                         <strong>Periodo:</strong> dal ${dataInizio} al ${dataFine}<br>
                         <strong>Giorni selezionati:</strong> ${listaGiorniTesto}
                     </div>
-                    <p>Ti ricordiamo di esporre il pass all'ingresso.</p>
+                    <p>Ti ricordiamo di esporre il pass all'ingresso del parcheggio.</p>
                     <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
                     <p style="font-size: 0.8rem; color: #999; text-align: center;">Sistema di prenotazione Parcheggio C.L. Fontanarossa</p>
                 </div>
@@ -69,15 +67,15 @@ app.post('/api/prenota', async (req, res) => {
         };
 
         await transporter.sendMail(mailOptions);
-        res.json({ success: true });
+        res.json({ success: true, message: "Prenotazione e mail inviate con successo" });
 
     } catch (err) {
-        console.error(err);
+        console.error("Errore Generale:", err);
         res.status(500).json({ error: "Errore durante la procedura" });
     }
 });
 
-// 5. Avvio
+// 5. Avvio Server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`Server acceso sulla porta ${PORT}`);
