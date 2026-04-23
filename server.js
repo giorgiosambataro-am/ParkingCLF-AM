@@ -34,37 +34,47 @@ app.get('/', (req, res) => {
 
 // 4. Rotta Prenotazioni
 app.post('/api/prenota', async (req, res) => {
-    const { npass, data, utente } = req.body;
+    const { npass, giorni, utente } = req.body; // Riceve 'giorni' come array
     
     try {
-        // Salva nel Database
-        await pool.query('INSERT INTO prenotazioni (npass, data, utente) VALUES ($1, $2, $3)', [npass, data, utente]);
-        console.log("DB OK");
-    } catch (err) {
-        console.error("Errore DB:", err.message);
-    }
+        // 1. Salvataggio multiplo nel Database
+        for (let data della lista giorni) {
+            await pool.query('INSERT INTO prenotazioni (npass, data, utente) VALUES ($1, $2, $3)', [npass, data, utente]);
+        }
 
-    // Invia Mail
-    const mailOptions = {
-        from: 'parkingclf.am@gmail.com',
-        to: utente, 
-        cc: 'parkingclf.am@gmail.com',
-        subject: `Conferma Prenotazione - NPASS: ${npass}`,
-        html: `
-            <div style="font-family: sans-serif; border: 2px solid #2563eb; padding: 20px; border-radius: 15px;">
-                <h2 style="color: #2563eb;">🅿️ Prenotazione Confermata</h2>
-                <p>Gentile utente <b>${npass}</b>,</p>
-                <p>Abbiamo registrato la tua richiesta per il giorno: <b>${data}</b></p>
-                <hr style="border: 0; border-top: 1px solid #eee;">
-                <p style="font-size: 0.8rem; color: #999;">Sistema Logistica</p>
-            </div>
-        `
-    };
+        // 2. Prepariamo i dati per la mail singola
+        const dataInizio = new Date(giorni[0]).toLocaleDateString('it-IT');
+        const dataFine = new Date(giorni[giorni.length - 1]).toLocaleDateString('it-IT');
+        const listaGiorniTesto = giorni.map(d => new Date(d).toLocaleDateString('it-IT')).join(', ');
 
-    transporter.sendMail(mailOptions, (error) => {
-        if (error) console.log("Errore mail:", error);
+        const mailOptions = {
+            from: 'parkingclf.am@gmail.com',
+            to: utente, 
+            cc: 'parkingclf.am@gmail.com',
+            subject: `Conferma Prenotazione C.L. Fontanarossa - NPASS: ${npass}`,
+            html: `
+                <div style="font-family: sans-serif; border: 2px solid #2563eb; padding: 20px; border-radius: 15px; max-width: 600px;">
+                    <h2 style="color: #2563eb; text-align: center;">🅿️ Parcheggio C.L. Fontanarossa</h2>
+                    <p>Gentile utente <b>${npass}</b>,</p>
+                    <p>Abbiamo registrato correttamente la tua prenotazione.</p>
+                    <div style="background: #f1f5f9; padding: 15px; border-radius: 10px;">
+                        <strong>Periodo:</strong> dal ${dataInizio} al ${dataFine}<br>
+                        <strong>Giorni selezionati:</strong> ${listaGiorniTesto}
+                    </div>
+                    <p>Ti ricordiamo di esporre il pass all'ingresso.</p>
+                    <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+                    <p style="font-size: 0.8rem; color: #999; text-align: center;">Sistema di prenotazione Parcheggio C.L. Fontanarossa</p>
+                </div>
+            `
+        };
+
+        await transporter.sendMail(mailOptions);
         res.json({ success: true });
-    });
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Errore durante la procedura" });
+    }
 });
 
 // 5. Avvio
