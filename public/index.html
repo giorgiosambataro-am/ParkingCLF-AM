@@ -24,21 +24,56 @@
             <button onclick="verificaAccesso()">Entra</button>
         </div>
 
-        <div id="piantone-section" style="display:none;">
-            <h2>Controllo Sbarra 🚧</h2>
-            <input type="text" id="search-npass" placeholder="Cerca NPASS">
-            <button onclick="cercaPassPiantone()">Cerca</button>
-            <div id="piantone-risultato" style="display:none; background:#f8fafc; padding:15px; border-radius:10px; margin-top:10px;">
-                <h3 id="p-npass"></h3>
-                <p id="p-info-stato" style="font-size:14px; font-weight:bold;"></p>
-                <button id="btn-e" onclick="azionePiantone('E')" style="background:#22c55e;">ENTRATA (E)</button>
-                <button id="btn-u" onclick="azionePiantone('U')" style="background:#f59e0b;">USCITA (U)</button>
+        <div id="piantone-section" class="card" style="display:none; max-width: 500px;">
+    <h1 style="display: flex; align-items: center; justify-content: center; gap: 10px;">
+        Controllo Sbarra 🚧
+    </h1>
+
+    <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+        <input type="text" id="search-npass" placeholder="D0003" style="flex: 1; background: #eef2ff;">
+        <button onclick="cercaPassPiantone()" style="width: auto; padding: 0 25px;">Cerca</button>
+    </div>
+
+    <hr style="border: 0; border-top: 1px solid #ddd; margin: 20px 0;">
+
+    <div id="piantone-risultato" style="display: none;">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
+            <button id="btn-e" onclick="azionePiantone('E')" style="background: #22c55e; width: 100px; height: 80px; border-radius: 15px; font-size: 14px;">
+                ENTRATA (E)
+            </button>
+            
+            <div style="text-align: center;">
+                <h2 id="p-npass" style="margin: 0; font-size: 24px; color: #1e293b;">PASS: ----</h2>
+                <p style="margin: 5px 0 0; font-weight: bold; color: #1e293b;">
+                    Stato attuale: <span id="p-stato">----</span>
+                </p>
             </div>
-            <hr>
-            <h4>🏎️ Veicoli nel Parcheggio</h4>
-            <table id="monitor-table"></table>
-            <button onclick="location.reload()" style="background:#64748b;">Esci</button>
+
+            <button id="btn-u" onclick="azionePiantone('U')" style="background: #f59e0b; width: 100px; height: 80px; border-radius: 15px; font-size: 14px;">
+                USCITA (U)
+            </button>
         </div>
+    </div>
+
+    <div style="margin-top: 40px;">
+        <h3 style="display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 18px;">
+            🏎️ Veicoli nel Parcheggio
+        </h3>
+        <table style="width: 100%; border-collapse: collapse; margin-top: 15px; text-align: left; font-size: 13px;">
+            <thead>
+                <tr style="border-bottom: 1px solid #eee; color: #64748b;">
+                    <th style="padding: 10px 5px;">NPASS</th>
+                    <th style="padding: 10px 5px;">Info Movimento</th>
+                    <th style="padding: 10px 5px;">Stato</th>
+                </tr>
+            </thead>
+            <tbody id="monitor-table-body">
+                </tbody>
+        </table>
+    </div>
+
+    <button onclick="location.reload()" style="background: #64748b; margin-top: 25px;">Esci</button>
+</div>
 
         </div>
     <script src="script.js"></script>
