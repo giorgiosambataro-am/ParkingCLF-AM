@@ -8,15 +8,16 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Configurazione Database per Nord Europa (Stockholm)
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false }
 });
 
-// Verifica immediata
+// Verifica connessione all'avvio
 pool.query('SELECT NOW()', (err) => {
   if (err) {
-    console.error('❌ ERRORE CONNESSIONE:', err.message);
+    console.error('❌ ERRORE CONNESSIONE DB:', err.message);
   } else {
     console.log('✅ DATABASE CONNESSO IN NORD EUROPA!');
   }
@@ -32,6 +33,7 @@ const transporter = nodemailer.createTransport({
 
 app.use(express.static(path.join(__dirname, 'public')));
 
+// --- VALIDAZIONE PASS ---
 app.post('/api/valida-pass', async (req, res) => {
     const { npass } = req.body;
     try {
@@ -47,19 +49,23 @@ app.post('/api/valida-pass', async (req, res) => {
     }
 });
 
-// --- PRENOTAZIONE ---
+// --- PRENOTAZIONE CON RIEPILOGO GIORNI ---
 app.post('/api/prenota', async (req, res) => {
     const { npass, giorni, utente } = req.body;
     try {
-        // ... (resto della logica INSERT rimane uguale) ...
+        // 1. Salva ogni giorno nel database
         for (let data of giorni) {
             await pool.query('INSERT INTO prenotazioni (npass, data_prenotata) VALUES ($1, $2)', [npass.toUpperCase(), data]);
         }
         
+        // 2. Aggiorna il periodo nell'anagrafica
         const periodo = `dal ${new Date(giorni[0]).toLocaleDateString('it-IT')} al ${new Date(giorni[giorni.length-1]).toLocaleDateString('it-IT')}`;
         await pool.query('UPDATE registro_pass SET ult_pren = $1 WHERE UPPER(npass) = $2', [periodo, npass.toUpperCase()]);
 
-        // NUOVO TEMPLATE MAIL (SCRNS. 3)
+        // 3. Preparazione dati per la mail (Grafica SCRNS. 3 + Chicca Conteggio)
+        const conteggioGiorni = giorni.length;
+        const listaGiorniFormattati = giorni.map(d => new Date(d).toLocaleDateString('it-IT')).join(', ');
+
         const mailOptions = {
             from: 'parkingclf.am@gmail.com',
             to: utente,
@@ -70,7 +76,7 @@ app.post('/api/prenota', async (req, res) => {
                 <h2 style="color: #3b82f6; margin-top: 0;">🅿️ Parcheggio C.L. Fontanarossa</h2>
                 <p>Gentile utente <b>${npass.toUpperCase()}</b>, la tua prenotazione è confermata.</p>
                 <p><b>Periodo:</b> ${periodo}</p>
-                <p><b>Giorni:</b> ${giorni.map(d => new Date(d).toLocaleDateString('it-IT')).join(', ')}</p>
+                <p><b>Giorni:</b> ${conteggioGiorni} (${listaGiorniFormattati})</p>
                 <hr style="border: 0; border-top: 1px solid #ddd; margin: 20px 0;">
                 <p style="font-size: 14px; color: #666;">Sistema di prenotazione Parcheggio C.L. Fontanarossa</p>
             </div>
@@ -80,24 +86,4 @@ app.post('/api/prenota', async (req, res) => {
         await transporter.sendMail(mailOptions);
         res.json({ success: true });
     } catch (err) {
-        console.error("Errore Salvataggio:", err.message);
-        res.status(500).json({ error: "Errore durante la prenotazione" });
-    }
-});
-
-app.get('/api/admin-stats', async (req, res) => {
-    try {
-        const result = await pool.query(`
-            SELECT data_prenotata as data, COUNT(*) as occupati, (120 - COUNT(*)) as liberi 
-            FROM prenotazioni 
-            WHERE data_prenotata >= CURRENT_DATE 
-            GROUP BY data_prenotata ORDER BY data_prenotata ASC
-        `);
-        res.json(result.rows);
-    } catch (err) {
-        res.status(500).json({ error: "Errore stats" });
-    }
-});
-
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server attivo sulla porta ${PORT}`));
+        console.error("Errore Salvataggio:", err.message
