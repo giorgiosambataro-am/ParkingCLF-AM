@@ -8,55 +8,62 @@
 </head>
 <body>
     <div class="container">
-        <h1>Parcheggio C.L. Fontanarossa</h1>
-
         <div id="login-section" class="card">
-            <h2>Credenziali Accesso</h2>
-            <input type="text" id="npass" placeholder="Ins. NPASS" style="text-transform: uppercase;">
-            <button onclick="verificaAccesso()">Entra</button>
+            <h1>Parcheggio C.L.</h1>
+            <input type="text" id="npass" placeholder="Inserisci NPASS (es. D003A)">
+            <button onclick="verificaAccesso()">Accedi</button>
         </div>
 
         <div id="calendar-section" class="card" style="display:none;">
-            <h3>Seleziona i giorni</h3>
+            <h1>Prenota Posto 🅿️</h1>
             <div id="calendar-grid"></div>
-            <input type="email" id="email-utente" placeholder="Tua Email per la ricevuta">
+            <input type="email" id="email-utente" placeholder="La tua email per ricevuta">
             <button onclick="confermaPrenotazioni()">Conferma Prenotazione</button>
+            <button onclick="mostraMiePrenotazioni()" style="background:#64748b; margin-top:10px;">Le mie prenotazioni</button>
+        </div>
+
+        <div id="my-reservations-section" class="card" style="display:none;">
+            <h1>Le mie Prenotazioni</h1>
+            <div id="list-reservations"></div>
+            <button onclick="eliminaTuttePrenotazioni()" style="background:#ef4444; margin-top:10px;">Elimina Tutte</button>
+            <button onclick="tornaAlCalendario()" style="background:#64748b; margin-top:10px;">Indietro</button>
+        </div>
+
+        <div id="success-section" class="card" style="display:none;">
+            <h1>Confermato! ✅</h1>
+            <p id="success-msg"></p>
+            <div class="summary-item"><b>Periodo:</b> <span id="res-periodo"></span></div>
+            <div class="summary-item"><b>Giorni:</b> <span id="res-giorni"></span></div>
+            <button onclick="location.reload()">Esci</button>
+        </div>
+
+        <div id="piantone-section" class="card" style="display:none;">
+            <h1>Controllo Sbarra 🚧</h1>
+            <input type="text" id="search-npass" placeholder="Cerca NPASS">
+            <button onclick="cercaPassPiantone()">Cerca</button>
+            <div id="piantone-risultato" style="display:none; margin-top:15px; padding:15px; background:#f8fafc; border-radius:10px;">
+                <h3 id="p-npass"></h3>
+                <p>Stato: <b id="p-stato"></b></p>
+                <button id="btn-e" onclick="azionePiantone('E')" style="background:#22c55e;">ENTRATA (E)</button>
+                <button id="btn-u" onclick="azionePiantone('U')" style="background:#f59e0b;">USCITA (U)</button>
+            </div>
+            <hr>
+            <h3>🚗 Veicoli nel Parcheggio</h3>
+            <div id="monitor-container">
+                <table style="width:100%; font-size:12px;" id="monitor-table"></table>
+            </div>
+            <button onclick="location.reload()" style="background:#64748b; margin-top:10px;">Log-out</button>
         </div>
 
         <div id="admin-section" class="card" style="display:none;">
-            <h2 style="color: #2563eb;">📊 Cruscotto Amministratore</h2>
-            <table border="1" style="width: 100%; border-collapse: collapse; margin-top: 10px;">
-                <thead>
-                    <tr style="background: #eee;">
-                        <th>Data</th>
-                        <th>Occupati</th>
-                        <th>Liberi</th>
-                    </tr>
-                </thead>
+            <h1>Report Posti</h1>
+            <table>
+                <thead><tr><th>Data</th><th>Occ.</th><th>Lib.</th></tr></thead>
                 <tbody id="admin-table-body"></tbody>
             </table>
-            <button onclick="location.reload()" style="margin-top:20px; background:#64748b;">Esci</button>
+            <button onclick="location.reload()">Esci</button>
         </div>
-        
-<button onclick="mostraMiePrenotazioni()" style="background: #64748b; margin-top: 10px;">Le mie prenotazioni</button>
-
-<div id="my-reservations-section" class="card" style="display:none;">
-    <h1>Le mie Prenotazioni</h1>
-    <div id="list-reservations" style="margin-bottom: 20px;"></div>
-    <button onclick="eliminaTuttePrenotazioni()" style="background: #ef4444; margin-bottom: 10px;">Elimina tutte le mie prenotazioni</button>
-    <button onclick="tornaAlCalendario()" style="background: #64748b;">Torna al calendario</button>
-</div>
-        <div id="success-section" class="card" style="display:none;">
-    <h1>Parcheggio C.L. Fontanarossa</h1>
-    <p id="success-msg"></p>
-    <div class="summary-item"><b>Periodo:</b> <span id="res-periodo"></span></div>
-    <div class="summary-item"><b>Giorni:</b> <span id="res-giorni"></span></div>
-    <p>✉️ Controlla la mail per la conferma.</p>
-    <button onclick="location.reload()">Torna alla Home</button>
-</div>
-
     </div>
-
     <script src="script.js"></script>
 </body>
 </html>
