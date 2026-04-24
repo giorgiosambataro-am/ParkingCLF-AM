@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CLF Parking System</title>
+    <title>Parking CLF</title>
     <style>
         :root { --blue: #3b82f6; --green: #22c55e; --orange: #f59e0b; --red: #ef4444; --gray: #64748b; --light: #f8fafc; }
         body { font-family: sans-serif; background: #f1f5f9; display: flex; justify-content: center; padding: 20px; margin: 0; }
@@ -11,60 +11,58 @@
         input, button { width: 100%; padding: 14px; margin: 8px 0; border-radius: 12px; border: 1px solid #e2e8f0; font-size: 16px; box-sizing: border-box; }
         button { border: none; font-weight: bold; cursor: pointer; color: white; background: var(--blue); }
         .btn-green { background: var(--green); } .btn-orange { background: var(--orange); } .btn-red { background: var(--red); } .btn-gray { background: var(--gray); }
-        .day-slot { display: inline-block; padding: 10px; border: 1px solid #e2e8f0; margin: 3px; border-radius: 8px; cursor: pointer; width: 55px; text-align: center; }
-        .selected { background: var(--blue); color: white; }
+        /* Stile pulsanti Piantone con Date */
+        .btn-container { display: flex; flex-direction: column; align-items: center; width: 100%; }
+        .btn-sub-date { font-size: 14px; font-weight: bold; margin-top: -5px; margin-bottom: 10px; color: #333; }
         table { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 15px; }
         th, td { padding: 10px; border-bottom: 1px solid #eee; text-align: left; }
-        .badge { padding: 4px 8px; border-radius: 6px; font-size: 11px; color: white; font-weight: bold; }
     </style>
 </head>
 <body>
     <div class="card">
         <div id="view-login">
-            <h2 style="text-align:center;color:var(--blue)">🅿️ C.L. Fontanarossa</h2>
-            <input type="text" id="in-npass" placeholder="INSERISCI IL TUO PASS">
+            <h2 style="text-align:center;">🅿️ CLF Fontanarossa</h2>
+            <input type="text" id="in-npass" placeholder="IL TUO PASS">
             <button onclick="doLogin()">Entra</button>
-        </div>
-
-        <div id="view-user" class="hidden">
-            <h3>📅 Prenota Posto</h3>
-            <div id="cal-grid" style="max-height:200px; overflow-y:auto; margin-bottom:15px;"></div>
-            <input type="email" id="u-email" placeholder="Email per la conferma">
-            <button onclick="inviaPren()">INVIA PRENOTAZIONE</button>
-            <button class="btn-gray" onclick="mostraMie()">Le mie prenotazioni</button>
-        </div>
-
-        <div id="view-my-list" class="hidden">
-            <h3 style="color:var(--blue)">🅿️ Le mie Prenotazioni</h3>
-            <div id="my-list-content"></div>
-            <button class="btn-red" style="margin-top:15px;" onclick="eliminaTutte()">Elimina tutte le mie prenotazioni</button>
-            <button class="btn-gray" onclick="show('view-user')">Torna al calendario</button>
-        </div>
-
-        <div id="view-success" class="hidden" style="text-align:center;">
-            <div style="font-size:50px;color:var(--green)">✅</div>
-            <h3>Prenotazione Inviata!</h3>
-            <div id="summary-details" style="text-align:left;background:var(--light);padding:15px;border-radius:12px;"></div>
-            <button style="margin-top:15px;" onclick="location.reload()">Torna alla Home</button>
         </div>
 
         <div id="view-piantone" class="hidden">
             <h3 style="text-align:center;">Controllo Sbarra 🚧</h3>
             <div style="display:flex;gap:10px;"><input type="text" id="search-p" placeholder="D0003"><button style="width:100px" onclick="cercaPass()">Cerca</button></div>
-            <div id="panel-piantone" class="hidden" style="background:var(--light);padding:20px;border-radius:15px;text-align:center;margin-top:15px;">
+            
+            <div id="panel-piantone" class="hidden" style="text-align:center; margin-top:20px;">
                 <h3 id="lab-pass">PASS: ---</h3>
                 <p id="lab-stato">Stato attuale: ---</p>
-                <div style="display:flex;gap:10px;"><button class="btn-green" onclick="mossa('E')">ENTRATA (E)</button><button class="btn-orange" onclick="mossa('U')">USCITA (U)</button></div>
+                
+                <div style="display:flex; gap:15px; margin-top:15px;">
+                    <div class="btn-container">
+                        <button class="btn-green" onclick="mossa('E')">ENTRATA (08:00)</button>
+                        <div id="date-e" class="btn-sub-date">--/--/----</div>
+                    </div>
+                    <div class="btn-container">
+                        <button class="btn-orange" onclick="mossa('U')">USCITA (12:00)</button>
+                        <div id="date-u" class="btn-sub-date">--/--/----</div>
+                    </div>
+                </div>
             </div>
+
             <h4 style="margin-top:25px;text-align:center;">🏎️ Veicoli nel Parcheggio</h4>
             <div id="lista-veicoli"></div>
             <button class="btn-gray" onclick="location.reload()">Log-out</button>
         </div>
 
         <div id="view-admin" class="hidden">
-            <h3 style="text-align:center;">📊 Cruscotto Amministratore</h3>
+            <h3>📊 Cruscotto Amministratore</h3>
             <table id="tab-admin"></table>
-            <button class="btn-gray" style="margin-top:25px;" onclick="location.reload()">Esci</button>
+            <button class="btn-gray" style="margin-top:20px;" onclick="location.reload()">Esci</button>
+        </div>
+
+        <div id="view-user" class="hidden">
+            <h3>📅 Prenota</h3>
+            <div id="cal-grid"></div>
+            <input type="email" id="u-email" placeholder="Tua email">
+            <button onclick="inviaPren()">PRENOTA</button>
+            <button class="btn-gray" onclick="location.reload()">Log-out</button>
         </div>
     </div>
     <script src="script.js"></script>
