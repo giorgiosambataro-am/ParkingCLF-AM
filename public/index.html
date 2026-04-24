@@ -1,15 +1,64 @@
-<div class="card">
-    <div id="view-success" class="hidden" style="text-align:center;">
-        <div style="font-size: 50px;">✅</div>
-        <h2>Prenotazione Inviata!</h2>
-        <div id="summary-details" style="background:#f8fafc; padding:15px; border-radius:10px; margin:15px 0; text-align:left; font-size:14px;"></div>
-        <p>Controlla la tua email per la conferma.</p>
-        <button onclick="location.reload()">Torna alla Home</button>
-    </div>
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CLF Parking</title>
+    <style>
+        :root { --blue: #3b82f6; --green: #22c55e; --red: #ef4444; --gray: #64748b; --light: #f8fafc; }
+        body { font-family: 'Segoe UI', sans-serif; background: #f1f5f9; display: flex; justify-content: center; padding: 20px; margin: 0; }
+        .card { background: white; padding: 25px; border-radius: 20px; width: 100%; max-width: 450px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
+        .hidden { display: none; }
+        h2, h3 { color: var(--blue); text-align: center; }
+        input, button { width: 100%; padding: 14px; margin: 8px 0; border-radius: 12px; border: 1px solid #e2e8f0; font-size: 16px; box-sizing: border-box; }
+        button { border: none; font-weight: bold; cursor: pointer; color: white; background: var(--blue); }
+        .btn-red { background: var(--red); }
+        .btn-gray { background: var(--gray); }
+        .day-slot { display: inline-block; padding: 10px; border: 1px solid #e2e8f0; margin: 3px; border-radius: 8px; cursor: pointer; width: 55px; text-align: center; }
+        .selected { background: var(--blue); color: white; }
+        .pren-item { background: var(--light); padding: 12px; margin: 8px 0; border-radius: 10px; display: flex; align-items: center; gap: 10px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { padding: 10px; border-bottom: 1px solid #eee; text-align: left; }
+        .num-liberi { color: var(--green); font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div id="view-login">
+            <h2>🅿️ C.L. Fontanarossa</h2>
+            <input type="text" id="in-npass" placeholder="IL TUO NPASS">
+            <button onclick="doLogin()">Entra</button>
+        </div>
 
-    <div id="view-my-list" class="hidden">
-        <h3 style="color:#3b82f6;">🅿️ Le mie Prenotazioni</h3>
-        <div id="my-list-content" style="margin-bottom:20px;"></div>
-        <button class="btn-gray" onclick="show('view-user')">Torna al Calendario</button>
+        <div id="view-user" class="hidden">
+            <h3>📅 Prenota Posto</h3>
+            <div id="cal-grid" style="max-height:200px; overflow-y:auto; margin-bottom:10px;"></div>
+            <input type="email" id="u-email" placeholder="Email per conferma">
+            <button onclick="inviaPren()">INVIA PRENOTAZIONE</button>
+            <button class="btn-gray" onclick="mostraMie()">Le mie prenotazioni</button>
+            <button class="btn-green" style="margin-top:10px;" onclick="mostraAdmin()">Cruscotto Amministratore</button>
+        </div>
+
+        <div id="view-my-list" class="hidden">
+            <h3>🅿️ Le mie Prenotazioni</h3>
+            <div id="my-list-content"></div>
+            <button class="btn-red" style="margin-top:15px;" onclick="eliminaTutte()">Elimina tutte le mie prenotazioni</button>
+            <button class="btn-gray" onclick="show('view-user')">Torna al calendario</button>
+        </div>
+
+        <div id="view-success" class="hidden" style="text-align:center;">
+            <div style="font-size:50px;">✅</div>
+            <h3>Prenotazione Inviata!</h3>
+            <div id="summary-details" style="text-align:left; background:var(--light); padding:15px; border-radius:12px;"></div>
+            <button style="margin-top:15px;" onclick="location.reload()">Home</button>
+        </div>
+
+        <div id="view-admin" class="hidden">
+            <h3>📊 Cruscotto Amministratore</h3>
+            <table id="tab-admin"></table>
+            <button class="btn-gray" style="margin-top:20px;" onclick="show('view-user')">Esci</button>
+        </div>
     </div>
-</div>
+    <script src="script.js"></script>
+</body>
+</html>
