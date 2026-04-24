@@ -34,13 +34,14 @@ async function verificaAccesso() {
     }
 }
 
+// ... tieni verificaAccesso() e mostraAdminDashboard() di prima ...
+
 function generaCalendario() {
     const grid = document.getElementById('calendar-grid');
     grid.innerHTML = "";
     const oggi = new Date();
     
-    // Genera i prossimi 30 giorni
-    for (let i = 0; i < 30; i++) {
+    for (let i = 0; i < 28; i++) {
         const data = new Date();
         data.setDate(oggi.getDate() + i);
         const isoData = data.toISOString().split('T')[0];
@@ -49,15 +50,10 @@ function generaCalendario() {
         const div = document.createElement('div');
         div.className = "day-slot";
         div.innerText = giornoTesto;
-        
         div.onclick = () => {
-            if (div.classList.contains('selected')) {
-                div.classList.remove('selected');
-                giorniSelezionati = giorniSelezionati.filter(d => d !== isoData);
-            } else {
-                div.classList.add('selected');
-                giorniSelezionati.push(isoData);
-            }
+            div.classList.toggle('selected');
+            if (div.classList.contains('selected')) giorniSelezionati.push(isoData);
+            else giorniSelezionati = giorniSelezionati.filter(d => d !== isoData);
         };
         grid.appendChild(div);
     }
@@ -65,29 +61,28 @@ function generaCalendario() {
 
 async function confermaPrenotazioni() {
     const email = document.getElementById('email-utente').value;
-    if (giorniSelezionati.length === 0) return alert("Seleziona almeno un giorno!");
-    if (!email) return alert("Inserisci la tua email per la ricevuta!");
+    if (giorniSelezionati.length === 0 || !email) return alert("Compila tutti i campi!");
 
-    try {
-        const res = await fetch('/api/prenota', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                npass: npassCorrente, 
-                giorni: giorniSelezionati.sort(), 
-                utente: email 
-            })
-        });
+    giorniSelezionati.sort();
+    const res = await fetch('/api/prenota', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ npass: npassCorrente, giorni: giorniSelezionati, utente: email })
+    });
 
-        if (res.ok) {
-            document.getElementById('calendar-section').style.display = 'none';
-            document.getElementById('success-section').style.display = 'block';
-        } else {
-            alert("Errore durante il salvataggio.");
-        }
-    } catch (e) {
-        alert("Errore di rete.");
+    if (res.ok) {
+        document.getElementById('calendar-section').style.display = 'none';
+        document.getElementById('success-section').style.display = 'block';
+        
+        // Popoliamo il riepilogo SCRNS 3
+        document.getElementById('success-msg').innerHTML = `Gentile utente <b>${npassCorrente}</b>, la tua prenotazione è confermata.`;
+        document.getElementById('res-periodo').innerText = `dal ${formattaData(giorniSelezionati[0])} al ${formattaData(giorniSelezionati[giorniSelezionati.length-1])}`;
+        document.getElementById('res-giorni').innerText = giorniSelezionati.map(d => formattaData(d)).join(', ');
     }
+}
+
+function formattaData(iso) {
+    return new Date(iso).toLocaleDateString('it-IT');
 }
 
 async function mostraAdminDashboard() {
