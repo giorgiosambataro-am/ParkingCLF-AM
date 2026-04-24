@@ -1,5 +1,5 @@
 const express = require('express');
-const { Pool } = require('pg');
+const { Pool } = require('pg'); // Dichiarato UNA SOLA VOLTA
 const path = require('path');
 const cors = require('cors');
 const nodemailer = require('nodemailer');
@@ -8,8 +8,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const { Pool } = require('pg');
-
+// Configurazione Database (Usa la stringa con aws-1 e porta 6543)
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false },
@@ -18,12 +17,12 @@ const pool = new Pool({
   connectionTimeoutMillis: 10000,
 });
 
-// Questo log apparirà nei log di Render
-pool.query('SELECT NOW()', (err, res) => {
+// Test di connessione all'avvio
+pool.query('SELECT NOW()', (err) => {
   if (err) {
-    console.error('❌ ERRORE CONNESSIONE:', err.message);
+    console.error('❌ ERRORE DATABASE:', err.message);
   } else {
-    console.log('✅ DATABASE AGGANCIATO E FUNZIONANTE!');
+    console.log('✅ DATABASE CONNESSO CON SUCCESSO!');
   }
 });
 
@@ -37,33 +36,30 @@ const transporter = nodemailer.createTransport({
 
 app.use(express.static(path.join(__dirname, 'public')));
 
+// --- LOGIN ---
 app.post('/api/valida-pass', async (req, res) => {
     const { npass } = req.body;
-    console.log("Controllo NPASS richiesto:", npass); // Log per debug
-    
     try {
-        // Cerchiamo nel nuovo registro_pass
-        const query = 'SELECT ruolo FROM registro_pass WHERE UPPER(npass) = $1';
-        const result = await pool.query(query, [npass.toUpperCase().trim()]);
-        
+        const result = await pool.query(
+            'SELECT ruolo FROM registro_pass WHERE UPPER(npass) = $1', 
+            [npass.toUpperCase()]
+        );
         if (result.rows.length > 0) {
-            console.log("✅ PASS TROVATO! Ruolo:", result.rows[0].ruolo);
-            
-            // Aggiorniamo l'accesso (opzionale, se fallisce non blocca il login)
-            pool.query('UPDATE registro_pass SET ultimo_accesso = NOW() WHERE UPPER(npass) = $1', [npass.toUpperCase()]).catch(e => console.log("Errore update log:", e.message));
-
+            await pool.query(
+                'UPDATE registro_pass SET ultimo_accesso = NOW() WHERE UPPER(npass) = $1', 
+                [npass.toUpperCase()]
+            );
             res.json({ valid: true, ruolo: result.rows[0].ruolo });
         } else {
-            console.log("❌ PASS NON TROVATO nel database registro_pass");
-            res.json({ valid: false, message: "NPASS non autorizzato o errato." });
+            res.json({ valid: false, message: "Pass non trovato." });
         }
     } catch (err) {
-        console.error("🔥 ERRORE QUERY:", err.message);
-        res.status(500).json({ error: "Errore database", details: err.message });
+        console.error("Errore login:", err.message);
+        res.status(500).json({ error: "Errore interno" });
     }
 });
 
-
+// --- PRENOTAZIONE ---
 app.post('/api/prenota', async (req, res) => {
     const { npass, giorni, utente } = req.body;
     try {
@@ -73,28 +69,27 @@ app.post('/api/prenota', async (req, res) => {
                 [npass.toUpperCase(), data]
             );
         }
-        
         const periodo = `dal ${new Date(giorni[0]).toLocaleDateString('it-IT')} al ${new Date(giorni[giorni.length-1]).toLocaleDateString('it-IT')}`;
         await pool.query(
             'UPDATE registro_pass SET ult_pren = $1 WHERE UPPER(npass) = $2', 
             [periodo, npass.toUpperCase()]
         );
 
-        const mailOptions = {
+        await transporter.sendMail({
             from: 'parkingclf.am@gmail.com',
             to: utente,
             cc: 'parkingclf.am@gmail.com',
             subject: `Conferma Parcheggio C.L. Fontanarossa - ${npass}`,
             html: `<h3>Prenotazione Confermata</h3><p>Periodo: <b>${periodo}</b></p>`
-        };
-        await transporter.sendMail(mailOptions);
+        });
         res.json({ success: true });
     } catch (err) {
         console.error("Errore prenotazione:", err.message);
-        res.status(500).json({ error: "Errore salvataggio" });
+        res.status(500).send("Errore salvataggio");
     }
 });
 
+// --- ADMIN ---
 app.get('/api/admin-stats', async (req, res) => {
     try {
         const result = await pool.query(`
