@@ -8,32 +8,19 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Configurazione Database per Nord Europa (Stockholm)
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false }
 });
 
-// Verifica connessione all'avvio
-pool.query('SELECT NOW()', (err) => {
-  if (err) {
-    console.error('❌ ERRORE CONNESSIONE DB:', err.message);
-  } else {
-    console.log('✅ DATABASE CONNESSO IN NORD EUROPA!');
-  }
-});
-
 const transporter = nodemailer.createTransport({
   service: 'gmail',
-  auth: { 
-    user: 'parkingclf.am@gmail.com', 
-    pass: process.env.EMAIL_PASSWORD 
-  }
+  auth: { user: 'parkingclf.am@gmail.com', pass: process.env.EMAIL_PASSWORD }
 });
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-// --- VALIDAZIONE PASS ---
+// --- LOGIN E VALIDAZIONE ---
 app.post('/api/valida-pass', async (req, res) => {
     const { npass } = req.body;
     try {
@@ -44,114 +31,85 @@ app.post('/api/valida-pass', async (req, res) => {
         } else {
             res.json({ valid: false, message: "Pass non trovato." });
         }
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
+    } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// --- NUOVA PRENOTAZIONE CON CONTROLLO ANTI-DUPLICATI (SOLUZIONE CRITICA) ---
+// --- PRENOTAZIONE (CON CONTROLLO DUPLICATI) ---
 app.post('/api/prenota', async (req, res) => {
     const { npass, giorni, utente } = req.body;
     try {
-        // CORREZIONE 1: Controllo pre-salvataggio. 
-        // Verifichiamo se l'utente ha già prenotato QUALCUNO dei giorni richiesti.
-        const checkResult = await pool.query(
-            'SELECT data_prenotata FROM prenotazioni WHERE UPPER(npass) = $1 AND data_prenotata = ANY($2)',
-            [npass.toUpperCase(), giorni]
-        );
-        
-        // Se troviamo già delle prenotazioni esistenti per questi giorni
-        if (checkResult.rows.length > 0) {
-            const dateDuplicate = checkResult.rows.map(row => new Date(row.data_prenotata).toLocaleDateString('it-IT')).join(', ');
-            return res.status(409).json({ error: `Hai già prenotato per queste date: ${dateDuplicate}. Controlla 'Le mie prenotazioni'.` });
-        }
-        
-        // CORREZIONE 2: Logica salvataggio invariata, ma ora è sicura.
-        // Se il controllo passa, procediamo a salvare i NUOVI giorni.
+        const check = await pool.query('SELECT data_prenotata FROM prenotazioni WHERE UPPER(npass) = $1 AND data_prenotata = ANY($2)', [npass.toUpperCase(), giorni]);
+        if (check.rows.length > 0) return res.status(409).json({ error: "Date già prenotate." });
+
         for (let data of giorni) {
-            await pool.query('INSERT INTO prenotazioni (npass, data_prenotata) VALUES ($1, $2)', [npass.toUpperCase(), data]);
+            await pool.query('INSERT INTO prenotazioni (npass, data_prenotata, stato) VALUES ($1, $2, $3)', [npass.toUpperCase(), data, 'PRENOTATO']);
         }
         
         const periodo = `dal ${new Date(giorni[0]).toLocaleDateString('it-IT')} al ${new Date(giorni[giorni.length-1]).toLocaleDateString('it-IT')}`;
         await pool.query('UPDATE registro_pass SET ult_pren = $1 WHERE UPPER(npass) = $2', [periodo, npass.toUpperCase()]);
 
-        const conteggioGiorni = giorni.length;
-        const listaGiorniFormattati = giorni.map(d => new Date(d).toLocaleDateString('it-IT')).join(', ');
-
         const mailOptions = {
             from: 'parkingclf.am@gmail.com',
             to: utente,
-            cc: 'parkingclf.am@gmail.com',
-            subject: `Conferma Prenotazione C.L. Fontanarossa - ${npass.toUpperCase()}`,
-            html: `
-            <div style="font-family: sans-serif; border: 2px solid #3b82f6; border-radius: 20px; padding: 25px; max-width: 600px; color: #333;">
-                <h2 style="color: #3b82f6; margin-top: 0;">🅿️ Parcheggio C.L. Fontanarossa</h2>
-                <p>Gentile utente <b>${npass.toUpperCase()}</b>, la tua prenotazione è confermata.</p>
+            subject: `Conferma Prenotazione - ${npass.toUpperCase()}`,
+            html: `<div style="border: 2px solid #3b82f6; border-radius: 20px; padding: 20px; font-family: sans-serif;">
+                <h2 style="color: #3b82f6;">🅿️ Parcheggio C.L. Fontanarossa</h2>
+                <p>Gentile <b>${npass.toUpperCase()}</b>, prenotazione confermata.</p>
                 <p><b>Periodo:</b> ${periodo}</p>
-                <p><b>Giorni:</b> ${conteggioGiorni} (${listaGiorniFormattati})</p>
-                <hr style="border: 0; border-top: 1px solid #ddd; margin: 20px 0;">
-                <p style="font-size: 14px; color: #666;">Sistema di prenotazione Parcheggio C.L. Fontanarossa</p>
-            </div>
-            `
+                <p><b>Giorni:</b> ${giorni.length} (${giorni.map(d => new Date(d).toLocaleDateString('it-IT')).join(', ')})</p>
+            </div>`
         };
-
         await transporter.sendMail(mailOptions);
         res.json({ success: true });
-    } catch (err) {
-        console.error("Errore Salvataggio:", err.message);
-        res.status(500).json({ error: "Errore interno durante la prenotazione" });
-    }
+    } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// --- RECUPERA PRENOTAZIONI UTENTE (CHICCA: DISTINCT E ORDINAMENTO) ---
+// --- LOGICA PIANTONE & MONITORAGGIO ---
+app.get('/api/piantone/cerca/:npass', async (req, res) => {
+    const oggi = new Date().toISOString().split('T')[0];
+    const resu = await pool.query('SELECT * FROM prenotazioni WHERE UPPER(npass) = $1 AND data_prenotata = $2', [req.params.npass.toUpperCase(), oggi]);
+    res.json(resu.rows.length > 0 ? { trovato: true, prenotazione: resu.rows[0] } : { trovato: false });
+});
+
+app.post('/api/piantone/azione', async (req, res) => {
+    const { id, azione, npass } = req.body;
+    if (azione === 'E') {
+        await pool.query("UPDATE prenotazioni SET stato = 'INGRESSO' WHERE id = $1", [id]);
+    } else if (azione === 'U') {
+        await pool.query("UPDATE prenotazioni SET stato = 'USCITO' WHERE id = $1", [id]);
+        await pool.query("DELETE FROM prenotazioni WHERE UPPER(npass) = $1 AND data_prenotata > CURRENT_DATE", [npass.toUpperCase()]);
+    }
+    res.json({ success: true });
+});
+
+app.get('/api/piantone/monitoraggio', async (req, res) => {
+    const query = `SELECT p.npass, MAX(p.data_prenotata) as data_fine FROM prenotazioni p 
+                   WHERE p.npass IN (SELECT npass FROM prenotazioni WHERE stato = 'INGRESSO') GROUP BY p.npass`;
+    const result = await pool.query(query);
+    const oggi = new Date(); oggi.setHours(0,0,0,0);
+    const data = result.rows.map(a => {
+        const df = new Date(a.data_fine);
+        let c = 'green', e = 'In Regola';
+        if (df.getTime() === oggi.getTime()) { c = 'orange'; e = 'In Scadenza'; }
+        else if (df < oggi) { c = 'red'; e = 'SCADUTO'; }
+        return { npass: a.npass, fine: df.toLocaleDateString('it-IT'), colore: c, etichetta: e };
+    });
+    res.json(data);
+});
+
 app.get('/api/mie-prenotazioni/:npass', async (req, res) => {
-    try {
-        const { npass } = req.params;
-        // CORREZIONE 3: Usiamo DISTINCT per assicurarci che, se ci sono stati duplicati nel passato, vengano mostrati una sola volta.
-        // E mostriamo solo le prenotazioni future.
-        const result = await pool.query(
-            'SELECT DISTINCT ON (data_prenotata) id, data_prenotata FROM prenotazioni WHERE UPPER(npass) = $1 AND data_prenotata >= CURRENT_DATE ORDER BY data_prenotata ASC',
-            [npass.toUpperCase()]
-        );
-        res.json(result.rows);
-    } catch (err) {
-        res.status(500).json({ error: "Errore recupero prenotazioni" });
-    }
+    const r = await pool.query('SELECT DISTINCT ON (data_prenotata) data_prenotata FROM prenotazioni WHERE UPPER(npass) = $1 AND data_prenotata >= CURRENT_DATE ORDER BY data_prenotata ASC', [req.params.npass.toUpperCase()]);
+    res.json(r.rows);
 });
 
-// --- ELIMINA TUTTE LE PRENOTAZIONI UTENTE (FUTURE) ---
 app.delete('/api/elimina-prenotazioni/:npass', async (req, res) => {
-    try {
-        const { npass } = req.params;
-        await pool.query(
-            'DELETE FROM prenotazioni WHERE UPPER(npass) = $1 AND data_prenotata >= CURRENT_DATE',
-            [npass.toUpperCase()]
-        );
-        // Puliamo anche il campo ult_pren nel registro
-        await pool.query('UPDATE registro_pass SET ult_pren = NULL WHERE UPPER(npass) = $1', [npass.toUpperCase()]);
-        
-        res.json({ success: true });
-    } catch (err) {
-        res.status(500).json({ error: "Errore eliminazione" });
-    }
+    await pool.query('DELETE FROM prenotazioni WHERE UPPER(npass) = $1 AND data_prenotata >= CURRENT_DATE', [req.params.npass.toUpperCase()]);
+    res.json({ success: true });
 });
 
-// --- ADMIN STATS (CONTA VEICOLI UNICI PER GIORNO) ---
 app.get('/api/admin-stats', async (req, res) => {
-    try {
-        // CORREZIONE 4: Il cruscotto admin ora deve contare quanti VEICOLI unici ci sono ogni giorno.
-        // In questo modo, se un veicolo è stato erroneamente salvato due volte, conta comunque 1.
-        const result = await pool.query(`
-            SELECT data_prenotata as data, COUNT(DISTINCT npass) as occupati, (120 - COUNT(DISTINCT npass)) as liberi 
-            FROM prenotazioni 
-            WHERE data_prenotata >= CURRENT_DATE 
-            GROUP BY data_prenotata ORDER BY data_prenotata ASC
-        `);
-        res.json(result.rows);
-    } catch (err) {
-        res.status(500).json({ error: "Errore stats" });
-    }
+    const r = await pool.query('SELECT data_prenotata as data, COUNT(DISTINCT npass) as occupati, (120 - COUNT(DISTINCT npass)) as liberi FROM prenotazioni WHERE data_prenotata >= CURRENT_DATE GROUP BY data_prenotata ORDER BY data_prenotata ASC');
+    res.json(r.rows);
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server attivo sulla porta ${PORT}`));
+app.listen(process.env.PORT || 3000, () => console.log("Server running"));
