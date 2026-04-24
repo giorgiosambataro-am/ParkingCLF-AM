@@ -105,6 +105,35 @@ app.get('/api/admin-stats', async (req, res) => {
         res.status(500).json({ error: "Errore stats" });
     }
 });
+// --- RECUPERA PRENOTAZIONI UTENTE ---
+app.get('/api/mie-prenotazioni/:npass', async (req, res) => {
+    try {
+        const { npass } = req.params;
+        const result = await pool.query(
+            'SELECT id, data_prenotata FROM prenotazioni WHERE UPPER(npass) = $1 AND data_prenotata >= CURRENT_DATE ORDER BY data_prenotata ASC',
+            [npass.toUpperCase()]
+        );
+        res.json(result.rows);
+    } catch (err) {
+        res.status(500).json({ error: "Errore recupero prenotazioni" });
+    }
+});
 
+// --- ELIMINA TUTTE LE PRENOTAZIONI UTENTE (FUTURE) ---
+app.delete('/api/elimina-prenotazioni/:npass', async (req, res) => {
+    try {
+        const { npass } = req.params;
+        await pool.query(
+            'DELETE FROM prenotazioni WHERE UPPER(npass) = $1 AND data_prenotata >= CURRENT_DATE',
+            [npass.toUpperCase()]
+        );
+        // Puliamo anche il campo ult_pren nel registro
+        await pool.query('UPDATE registro_pass SET ult_pren = NULL WHERE UPPER(npass) = $1', [npass.toUpperCase()]);
+        
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: "Errore eliminazione" });
+    }
+});
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server attivo sulla porta ${PORT}`));
