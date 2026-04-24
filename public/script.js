@@ -77,7 +77,8 @@ async function confermaPrenotazioni() {
         // Popoliamo il riepilogo SCRNS 3
         document.getElementById('success-msg').innerHTML = `Gentile utente <b>${npassCorrente}</b>, la tua prenotazione è confermata.`;
         document.getElementById('res-periodo').innerText = `dal ${formattaData(giorniSelezionati[0])} al ${formattaData(giorniSelezionati[giorniSelezionati.length-1])}`;
-        document.getElementById('res-giorni').innerText = giorniSelezionati.map(d => formattaData(d)).join(', ');
+        const conteggioGiorni = giorniSelezionati.length;
+        document.getElementById('res-giorni').innerText = `${conteggioGiorni} (${giorniSelezionati.map(d => formattaData(d)).join(', ')})`;
     }
 }
 
