@@ -1,77 +1,15 @@
-<!DOCTYPE html>
-<html lang="it">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CL Fontanarossa</title>
-    <style>
-        body { font-family: sans-serif; background: #f1f5f9; display: flex; justify-content: center; padding: 20px; }
-        .card { background: white; padding: 20px; border-radius: 15px; width: 100%; max-width: 500px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        .hidden { display: none; }
-        input, button { width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; border: 1px solid #ddd; box-sizing: border-box;}
-        button { background: #3b82f6; color: white; border: none; font-weight: bold; cursor: pointer; }
-        .btn-e { background: #22c55e; height: 70px; }
-        .btn-u { background: #f59e0b; height: 70px; }
-        .day-slot { display: inline-block; padding: 10px; border: 1px solid #ddd; margin: 2px; border-radius: 5px; cursor: pointer; }
-        .selected { background: #3b82f6; color: white; }
-        table { width: 100%; font-size: 11px; border-collapse: collapse; margin-top: 15px; }
-        th, td { border-bottom: 1px solid #eee; padding: 8px 4px; text-align: left; }
-        .time-label { font-size: 10px; color: #64748b; font-weight: normal; margin-top: 5px; display: block; }
-    </style>
-</head>
-<body>
-    <div class="card">
-        <div id="view-login">
-            <h2 style="text-align:center;">Parcheggio CL F.ssa</h2>
-            <input type="text" id="in-npass" placeholder="IL TUO NPASS">
-            <button onclick="doLogin()">ACCEDI</button>
-        </div>
-
-        <div id="view-user" class="hidden">
-            <h3>Seleziona i giorni</h3>
-            <div id="cal-grid" style="max-height:200px; overflow-y:auto; margin-bottom:10px; border:1px solid #eee; padding:5px;"></div>
-            <input type="email" id="u-email" placeholder="Inserisci mail per conferma">
-            <button onclick="inviaPren()">INVIA PRENOTAZIONE</button>
-            <button style="background:#64748b;" onclick="mostraMie()">LE MIE PRENOTAZIONI</button>
-            <button style="background:#ef4444;" onclick="location.reload()">LOGOUT</button>
-        </div>
-
-        <div id="view-piantone" class="hidden">
-            <h2 style="text-align:center;">Controllo Sbarra 🚧</h2>
-            <div style="display:flex; gap:5px;">
-                <input type="text" id="search-p" placeholder="Cerca Pass...">
-                <button style="width:80px;" onclick="cercaPass()">CERCA</button>
-            </div>
-            
-            <div id="panel-piantone" class="hidden" style="margin:20px 0; border:1px solid #eee; padding:15px; border-radius:10px;">
-                <div style="display:flex; justify-content:space-between; align-items:start; gap:10px;">
-                    <div style="flex:1; text-align:center;">
-                        <button id="b-e" class="btn-e" onclick="mossa('E')">ENTRATA</button>
-                        <span id="time-e" class="time-label">--</span>
-                    </div>
-                    <div style="flex:1; text-align:center;">
-                        <h3 id="lab-pass" style="margin:0;">---</h3>
-                        <small id="lab-stato">---</small>
-                    </div>
-                    <div style="flex:1; text-align:center;">
-                        <button id="b-u" class="btn-u" onclick="mossa('U')">USCITA</button>
-                        <span id="time-u" class="time-label">--</span>
-                    </div>
-                </div>
-            </div>
-
-            <h4>🏎️ Veicoli nel Parcheggio</h4>
-            <table id="tab-monitor"></table>
-            <button style="margin-top:20px; background:#6366f1;" onclick="mostraRiepilogo()">RIEPILOGO GENERALE</button>
-            <button style="background:#64748b;" onclick="location.reload()">LOGOUT</button>
-        </div>
-
-        <div id="view-summary" class="hidden">
-            <h3>Riepilogo Generale</h3>
-            <table id="tab-summary"></table>
-            <button style="margin-top:20px;" onclick="show('view-piantone')">INDIETRO</button>
-        </div>
+<div class="card">
+    <div id="view-success" class="hidden" style="text-align:center;">
+        <div style="font-size: 50px;">✅</div>
+        <h2>Prenotazione Inviata!</h2>
+        <div id="summary-details" style="background:#f8fafc; padding:15px; border-radius:10px; margin:15px 0; text-align:left; font-size:14px;"></div>
+        <p>Controlla la tua email per la conferma.</p>
+        <button onclick="location.reload()">Torna alla Home</button>
     </div>
-    <script src="script.js"></script>
-</body>
-</html>
+
+    <div id="view-my-list" class="hidden">
+        <h3 style="color:#3b82f6;">🅿️ Le mie Prenotazioni</h3>
+        <div id="my-list-content" style="margin-bottom:20px;"></div>
+        <button class="btn-gray" onclick="show('view-user')">Torna al Calendario</button>
+    </div>
+</div>
