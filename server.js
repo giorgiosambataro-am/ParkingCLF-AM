@@ -20,7 +20,7 @@ const transporter = nodemailer.createTransport({
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-// --- LOGIN MULTI-RUOLO ---
+// LOGIN
 app.post('/api/valida-pass', async (req, res) => {
     const { npass } = req.body;
     try {
@@ -30,7 +30,7 @@ app.post('/api/valida-pass', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// --- AREA UTENTE: PRENOTAZIONE E MAIL ---
+// PRENOTAZIONE
 app.post('/api/prenota', async (req, res) => {
     const { npass, giorni, email } = req.body;
     try {
@@ -41,14 +41,11 @@ app.post('/api/prenota', async (req, res) => {
         const mailOptions = {
             from: '"Parcheggio C.L. Fontanarossa" <parkingclf.am@gmail.com>',
             to: email,
-            subject: `Conferma Prenotazione - ${npass.toUpperCase()}`,
+            subject: `Conferma - ${npass.toUpperCase()}`,
             html: `<div style="font-family:sans-serif;border:2px solid #3b82f6;border-radius:15px;padding:20px;max-width:600px;">
                 <h2 style="color:#3b82f6;">🅿️ Parcheggio C.L. Fontanarossa</h2>
-                <p>Gentile utente <b>${npass.toUpperCase()}</b>, la tua prenotazione è confermata.</p>
-                <p><b>Periodo:</b> dal ${new Date(sorted[0]).toLocaleDateString('it-IT')} al ${new Date(sorted[sorted.length-1]).toLocaleDateString('it-IT')}</p>
+                <p>Gentile utente <b>${npass.toUpperCase()}</b>, prenotazione confermata.</p>
                 <p><b>Giorni:</b> ${sorted.map(d => new Date(d).toLocaleDateString('it-IT')).join(', ')}</p>
-                <hr style="border:0;border-top:1px solid #eee;margin:20px 0;">
-                <p style="font-size:12px;color:#666;">Sistema di prenotazione Parcheggio C.L. Fontanarossa</p>
             </div>`
         };
         await transporter.sendMail(mailOptions);
@@ -56,28 +53,21 @@ app.post('/api/prenota', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.get('/api/mie-prenotazioni/:npass', async (req, res) => {
-    const r = await pool.query('SELECT data_prenotata, stato FROM prenotazioni WHERE UPPER(npass) = $1 AND data_prenotata >= CURRENT_DATE ORDER BY data_prenotata ASC', [req.params.npass.toUpperCase()]);
-    res.json(r.rows);
-});
-
-// --- AREA PIANTONE: CONTROLLO SBARRA ---
+// PIANTONE: CERCA E AZIONE
 app.get('/api/piantone/cerca/:npass', async (req, res) => {
-    const oggi = new Date().toISOString().split('T')[0];
-    const r = await pool.query('SELECT * FROM prenotazioni WHERE UPPER(npass) = $1 AND data_prenotata = $2', [req.params.npass.toUpperCase(), oggi]);
-    res.json(r.rows.length > 0 ? { trovato: true, prenotazione: r.rows[0] } : { trovato: false });
+    const r = await pool.query('SELECT * FROM prenotazioni WHERE UPPER(npass) = $1 AND data_prenotata >= CURRENT_DATE ORDER BY data_prenotata ASC', [req.params.npass.toUpperCase()]);
+    res.json(r.rows.length > 0 ? { trovato: true, prenotazioni: r.rows } : { trovato: false });
 });
 
 app.post('/api/piantone/azione', async (req, res) => {
     const { id, azione } = req.body;
     const ora = new Date();
-    const stato = azione === 'E' ? 'INGRESSO' : 'USCITO';
-    const campoOra = azione === 'E' ? 'orario_ingresso' : 'orario_uscita';
-    await pool.query(`UPDATE prenotazioni SET stato = $1, ${campoOra} = $2 WHERE id = $3`, [stato, ora, id]);
+    const stato = azione === 'E' ? 'ENTRATO' : 'USCITO';
+    await pool.query(`UPDATE prenotazioni SET stato = $1, ${azione === 'E' ? 'orario_ingresso' : 'orario_uscita'} = $2 WHERE id = $3`, [stato, ora, id]);
     res.json({ success: true });
 });
 
-// --- AREA ADMIN: CRUSCOTTO ---
+// ADMIN: CRUSCOTTO
 app.get('/api/admin/cruscotto', async (req, res) => {
     const r = await pool.query('SELECT data_prenotata, COUNT(*) as occupati FROM prenotazioni WHERE data_prenotata >= CURRENT_DATE GROUP BY data_prenotata ORDER BY data_prenotata ASC');
     res.json(r.rows.map(row => ({
@@ -85,11 +75,6 @@ app.get('/api/admin/cruscotto', async (req, res) => {
         occupati: row.occupati,
         liberi: 120 - row.occupati
     })));
-});
-
-app.get('/api/veicoli-dentro', async (req, res) => {
-    const r = await pool.query("SELECT npass, data_prenotata, orario_ingresso FROM prenotazioni WHERE stato = 'INGRESSO' ORDER BY orario_ingresso DESC");
-    res.json(r.rows);
 });
 
 app.listen(process.env.PORT || 3000);
