@@ -8,27 +8,19 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Configurazione Pool ottimizzata
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: {
-    rejectUnauthorized: false
-  },
-  // Impostazioni specifiche per il Pooler (pgbouncer)
-  max: 10,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 10000,
+  ssl: { rejectUnauthorized: false }
 });
 
-// Test migliorato
-pool.query('SELECT 1', (err) => {
+// Questo log è fondamentale: leggilo nella dashboard di Render!
+pool.query('SELECT NOW()', (err, res) => {
   if (err) {
-    console.error('❌ ERRORE DI CONNESSIONE AL POOLER:', err.message);
+    console.error('❌ ERRORE CONNESSIONE:', err.message);
   } else {
-    console.log('✅ CONNESSIONE STABILITA VIA POOLER (IPv4)');
+    console.log('✅ DATABASE AGGANCIATO!');
   }
 });
-
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: { 
