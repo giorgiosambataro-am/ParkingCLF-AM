@@ -1,9 +1,12 @@
 let npassCorrente = "";
 let giorniSelezionati = [];
 
+/**
+ * LOGIN: Verifica il pass e decide se mostrare il calendario o il pannello admin
+ */
 async function verificaAccesso() {
     const npassInput = document.getElementById('npass').value.trim();
-    if (!npassInput) return alert("Inserisci un NPASS");
+    if (!npassInput) return alert("Per favore, inserisci un NPASS valido.");
 
     try {
         const response = await fetch('/api/valida-pass', {
@@ -11,8 +14,6 @@ async function verificaAccesso() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ npass: npassInput })
         });
-
-        if (!response.ok) throw new Error("Errore server");
 
         const data = await response.json();
 
@@ -24,78 +25,161 @@ async function verificaAccesso() {
                 mostraAdminDashboard();
             } else {
                 document.getElementById('calendar-section').style.display = 'block';
-                generaCalendario(); // Ricrea la griglia visiva
+                generaCalendario();
             }
         } else {
-            alert(data.message || "Accesso negato");
+            alert(data.message || "Accesso negato: Pass non trovato.");
         }
     } catch (error) {
+        console.error("Errore login:", error);
         alert("Errore di connessione al server.");
     }
 }
 
-// ... tieni verificaAccesso() e mostraAdminDashboard() di prima ...
-
+/**
+ * CALENDARIO: Genera i giorni da oggi fino alla fine del mese successivo
+ */
 function generaCalendario() {
     const grid = document.getElementById('calendar-grid');
     grid.innerHTML = "";
-    const oggi = new Date();
+    giorniSelezionati = []; // Reset selezione
     
-    for (let i = 0; i < 28; i++) {
-        const data = new Date();
-        data.setDate(oggi.getDate() + i);
-        const isoData = data.toISOString().split('T')[0];
-        const giornoTesto = data.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' });
+    const oggi = new Date();
+    // Calcola l'ultimo giorno del mese successivo
+    // (Mese corrente + 2, giorno 0 = ultimo giorno del mese precedente a quello indicato)
+    const fineMeseSuccessivo = new Date(oggi.getFullYear(), oggi.getMonth() + 2, 0);
+    
+    let dataCursore = new Date(oggi);
+
+    while (dataCursore <= fineMeseSuccessivo) {
+        const isoData = dataCursore.toISOString().split('T')[0];
+        const giornoTesto = dataCursore.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' });
         
         const div = document.createElement('div');
         div.className = "day-slot";
         div.innerText = giornoTesto;
+        
         div.onclick = () => {
             div.classList.toggle('selected');
-            if (div.classList.contains('selected')) giorniSelezionati.push(isoData);
-            else giorniSelezionati = giorniSelezionati.filter(d => d !== isoData);
+            if (div.classList.contains('selected')) {
+                giorniSelezionati.push(isoData);
+            } else {
+                giorniSelezionati = giorniSelezionati.filter(d => d !== isoData);
+            }
         };
-        grid.appendChild(div);
-    }
-}
-
-async function confermaPrenotazioni() {
-    const email = document.getElementById('email-utente').value;
-    if (giorniSelezionati.length === 0 || !email) return alert("Compila tutti i campi!");
-
-    giorniSelezionati.sort();
-    const res = await fetch('/api/prenota', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ npass: npassCorrente, giorni: giorniSelezionati, utente: email })
-    });
-
-    if (res.ok) {
-        document.getElementById('calendar-section').style.display = 'none';
-        document.getElementById('success-section').style.display = 'block';
         
-        // Popoliamo il riepilogo SCRNS 3
-        document.getElementById('success-msg').innerHTML = `Gentile utente <b>${npassCorrente}</b>, la tua prenotazione è confermata.`;
-        document.getElementById('res-periodo').innerText = `dal ${formattaData(giorniSelezionati[0])} al ${formattaData(giorniSelezionati[giorniSelezionati.length-1])}`;
-        const conteggioGiorni = giorniSelezionati.length;
-        document.getElementById('res-giorni').innerText = `${conteggioGiorni} (${giorniSelezionati.map(d => formattaData(d)).join(', ')})`;
+        grid.appendChild(div);
+        dataCursore.setDate(dataCursore.getDate() + 1);
     }
 }
 
-function formattaData(iso) {
-    return new Date(iso).toLocaleDateString('it-IT');
+/**
+ * PRENOTAZIONE: Invia i giorni selezionati al server
+ */
+async function confermaPrenotazioni() {
+    const email = document.getElementById('email-utente').value.trim();
+    if (giorniSelezionati.length === 0) return alert("Seleziona almeno un giorno sul calendario!");
+    if (!email) return alert("Inserisci la tua email per ricevere la conferma.");
+
+    // Ordiniamo le date cronologicamente
+    giorniSelezionati.sort();
+
+    try {
+        const res = await fetch('/api/prenota', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                npass: npassCorrente, 
+                giorni: giorniSelezionati, 
+                utente: email 
+            })
+        });
+
+        if (res.ok) {
+            const periodo = `dal ${formattaData(giorniSelezionati[0])} al ${formattaData(giorniSelezionati[giorniSelezionati.length-1])}`;
+            const elenco = `${giorniSelezionati.length} (${giorniSelezionati.map(d => formattaData(d)).join(', ')})`;
+
+            document.getElementById('calendar-section').style.display = 'none';
+            document.getElementById('success-section').style.display = 'block';
+            
+            document.getElementById('success-msg').innerHTML = `Gentile utente <b>${npassCorrente}</b>, la tua prenotazione è confermata.`;
+            document.getElementById('res-periodo').innerText = periodo;
+            document.getElementById('res-giorni').innerText = elenco;
+        } else {
+            alert("Errore durante il salvataggio della prenotazione.");
+        }
+    } catch (e) {
+        alert("Errore di rete. Riprova più tardi.");
+    }
 }
 
+/**
+ * GESTIONE PERSONALE: Mostra le prenotazioni già effettuate
+ */
+async function mostraMiePrenotazioni() {
+    try {
+        const res = await fetch(`/api/mie-prenotazioni/${npassCorrente}`);
+        const dati = await res.json();
+        
+        const lista = document.getElementById('list-reservations');
+        lista.innerHTML = dati.length > 0 
+            ? dati.map(p => `<div class="summary-item">✅ ${formattaData(p.data_prenotata)}</div>`).join('')
+            : "<p>Non hai prenotazioni attive per il futuro.</p>";
+            
+        document.getElementById('calendar-section').style.display = 'none';
+        document.getElementById('my-reservations-section').style.display = 'block';
+    } catch (e) {
+        alert("Impossibile recuperare le tue prenotazioni.");
+    }
+}
+
+/**
+ * ELIMINAZIONE: Cancella tutte le prenotazioni future dell'utente
+ */
+async function eliminaTuttePrenotazioni() {
+    if (!confirm("ATTENZIONE: Sei sicuro di voler eliminare TUTTE le tue prenotazioni future? L'azione non è reversibile.")) return;
+    
+    try {
+        const res = await fetch(`/api/elimina-prenotazioni/${npassCorrente}`, { method: 'DELETE' });
+        if (res.ok) {
+            alert("Tutte le tue prenotazioni sono state cancellate con successo.");
+            location.reload(); // Ricarica per pulire tutto
+        }
+    } catch (e) {
+        alert("Errore durante l'eliminazione.");
+    }
+}
+
+/**
+ * ADMIN: Carica le statistiche dei posti occupati
+ */
 async function mostraAdminDashboard() {
     document.getElementById('admin-section').style.display = 'block';
-    const res = await fetch('/api/admin-stats');
-    const stats = await res.json();
-    const body = document.getElementById('admin-table-body');
-    body.innerHTML = stats.map(s => `
-        <tr>
-            <td>${new Date(s.data).toLocaleDateString('it-IT')}</td>
-            <td>${s.occupati}</td>
-            <td style="font-weight:bold; color:${s.liberi < 10 ? 'red' : 'green'}">${s.liberi}</td>
-        </tr>
-    `).join('');
+    try {
+        const res = await fetch('/api/admin-stats');
+        const stats = await res.json();
+        const body = document.getElementById('admin-table-body');
+        
+        body.innerHTML = stats.map(s => `
+            <tr>
+                <td>${formattaData(s.data)}</td>
+                <td>${s.occupati}</td>
+                <td style="font-weight:bold; color:${s.liberi < 20 ? '#ef4444' : '#22c55e'}">${s.liberi}</td>
+            </tr>
+        `).join('');
+    } catch (e) {
+        console.error("Errore stats:", e);
+    }
+}
+
+/**
+ * UTILS: Helper funzioni grafiche
+ */
+function formattaData(isoString) {
+    return new Date(isoString).toLocaleDateString('it-IT');
+}
+
+function tornaAlCalendario() {
+    document.getElementById('my-reservations-section').style.display = 'none';
+    document.getElementById('calendar-section').style.display = 'block';
 }
