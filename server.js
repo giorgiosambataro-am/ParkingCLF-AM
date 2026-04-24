@@ -71,31 +71,43 @@ app.post('/api/piantone/azione', async (req, res) => {
 });
 
 app.get('/api/piantone/monitoraggio', async (req, res) => {
-    const query = `
-        SELECT p.npass, MAX(p.data_prenotata) as data_fine, p.stato, p.orario_ingresso, p.orario_uscita
-        FROM prenotazioni p 
-        WHERE p.npass IN (SELECT npass FROM prenotazioni WHERE stato = 'INGRESSO') 
-        GROUP BY p.npass, p.stato, p.orario_ingresso, p.orario_uscita`;
-    const result = await pool.query(query);
-    const oggi = new Date(); oggi.setHours(0,0,0,0);
+    try {
+        const query = `
+            SELECT p.npass, p.data_prenotata as data_scadenza, p.stato, p.orario_ingresso
+            FROM prenotazioni p 
+            WHERE p.stato = 'INGRESSO'
+            ORDER BY p.data_prenotata ASC`;
+        const result = await pool.query(query);
+        
+        const oggi = new Date();
+        oggi.setHours(0,0,0,0);
 
-    const data = result.rows.map(a => {
-        const df = new Date(a.data_fine);
-        let c = 'green', e = 'In Regola';
-        const hIngresso = a.orario_ingresso ? new Date(a.orario_ingresso).toLocaleTimeString('it-IT', {hour: '2-digit', minute:'2-digit'}) : '--:--';
-        
-        if (df.getTime() === oggi.getTime()) { c = 'orange'; e = 'In Scadenza'; }
-        else if (df < oggi) { c = 'red'; e = 'SCADUTO'; }
-        
-        return { 
-            npass: a.npass, 
-            fine: df.toLocaleDateString('it-IT'), 
-            colore: c, 
-            etichetta: e,
-            info: `INGRESSO (${new Date().toLocaleDateString('it-IT')}) ${hIngresso}` 
-        };
-    });
-    res.json(data);
+        const monitoraggio = result.rows.map(auto => {
+            const dataScad = new Date(auto.data_scadenza);
+            let colore = '#22c55e'; // Verde
+            let etichetta = 'In Regola';
+
+            if (dataScad.getTime() === oggi.getTime()) {
+                colore = '#f59e0b'; // Arancio
+                etichetta = 'In Scadenza';
+            } else if (dataScad < oggi) {
+                colore = '#ef4444'; // Rosso
+                etichetta = 'SCADUTO';
+            }
+
+            const oraI = auto.orario_ingresso ? 
+                new Date(auto.orario_ingresso).toLocaleTimeString('it-IT', {hour:'2-digit', minute:'2-digit'}) : '--:--';
+
+            return {
+                npass: auto.npass,
+                scad: dataScad.toLocaleDateString('it-IT'),
+                movimento: `INGRESSO (${new Date().toLocaleDateString('it-IT')}) ${oraI}`,
+                colore,
+                etichetta
+            };
+        });
+        res.json(monitoraggio);
+    } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 // --- UTILS ADMIN & USER ---
