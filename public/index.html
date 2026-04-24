@@ -8,7 +8,7 @@
         body { font-family: sans-serif; background: #f1f5f9; display: flex; justify-content: center; padding: 20px; }
         .card { background: white; padding: 20px; border-radius: 15px; width: 100%; max-width: 500px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
         .hidden { display: none; }
-        input, button { width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; border: 1px solid #ddd; }
+        input, button { width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; border: 1px solid #ddd; box-sizing: border-box;}
         button { background: #3b82f6; color: white; border: none; font-weight: bold; cursor: pointer; }
         .btn-e { background: #22c55e; height: 70px; }
         .btn-u { background: #f59e0b; height: 70px; }
@@ -28,8 +28,9 @@
         </div>
 
         <div id="view-user" class="hidden">
-            <h3>Prenota Posto</h3>
-            <div id="cal-grid"></div>
+            <h3>Seleziona i giorni</h3>
+            <div id="cal-grid" style="max-height:200px; overflow-y:auto; margin-bottom:10px; border:1px solid #eee; padding:5px;"></div>
+            <input type="email" id="u-email" placeholder="Inserisci mail per conferma">
             <button onclick="inviaPren()">INVIA PRENOTAZIONE</button>
             <button style="background:#64748b;" onclick="mostraMie()">LE MIE PRENOTAZIONI</button>
             <button style="background:#ef4444;" onclick="location.reload()">LOGOUT</button>
@@ -46,7 +47,7 @@
                 <div style="display:flex; justify-content:space-between; align-items:start; gap:10px;">
                     <div style="flex:1; text-align:center;">
                         <button id="b-e" class="btn-e" onclick="mossa('E')">ENTRATA</button>
-                        <span id="time-e" class="time-label">--/-- ore --:--</span>
+                        <span id="time-e" class="time-label">--</span>
                     </div>
                     <div style="flex:1; text-align:center;">
                         <h3 id="lab-pass" style="margin:0;">---</h3>
@@ -54,7 +55,7 @@
                     </div>
                     <div style="flex:1; text-align:center;">
                         <button id="b-u" class="btn-u" onclick="mossa('U')">USCITA</button>
-                        <span id="time-u" class="time-label">--/-- ore --:--</span>
+                        <span id="time-u" class="time-label">--</span>
                     </div>
                 </div>
             </div>
@@ -66,7 +67,7 @@
         </div>
 
         <div id="view-summary" class="hidden">
-            <h3>Riepilogo Tutti i Pass</h3>
+            <h3>Riepilogo Generale</h3>
             <table id="tab-summary"></table>
             <button style="margin-top:20px;" onclick="show('view-piantone')">INDIETRO</button>
         </div>
