@@ -49,20 +49,32 @@ app.post('/api/valida-pass', async (req, res) => {
     }
 });
 
-// --- PRENOTAZIONE CON RIEPILOGO GIORNI ---
+// --- NUOVA PRENOTAZIONE CON CONTROLLO ANTI-DUPLICATI (SOLUZIONE CRITICA) ---
 app.post('/api/prenota', async (req, res) => {
     const { npass, giorni, utente } = req.body;
     try {
-        // 1. Salva ogni giorno nel database
+        // CORREZIONE 1: Controllo pre-salvataggio. 
+        // Verifichiamo se l'utente ha già prenotato QUALCUNO dei giorni richiesti.
+        const checkResult = await pool.query(
+            'SELECT data_prenotata FROM prenotazioni WHERE UPPER(npass) = $1 AND data_prenotata = ANY($2)',
+            [npass.toUpperCase(), giorni]
+        );
+        
+        // Se troviamo già delle prenotazioni esistenti per questi giorni
+        if (checkResult.rows.length > 0) {
+            const dateDuplicate = checkResult.rows.map(row => new Date(row.data_prenotata).toLocaleDateString('it-IT')).join(', ');
+            return res.status(409).json({ error: `Hai già prenotato per queste date: ${dateDuplicate}. Controlla 'Le mie prenotazioni'.` });
+        }
+        
+        // CORREZIONE 2: Logica salvataggio invariata, ma ora è sicura.
+        // Se il controllo passa, procediamo a salvare i NUOVI giorni.
         for (let data of giorni) {
             await pool.query('INSERT INTO prenotazioni (npass, data_prenotata) VALUES ($1, $2)', [npass.toUpperCase(), data]);
         }
         
-        // 2. Aggiorna il periodo nell'anagrafica
         const periodo = `dal ${new Date(giorni[0]).toLocaleDateString('it-IT')} al ${new Date(giorni[giorni.length-1]).toLocaleDateString('it-IT')}`;
         await pool.query('UPDATE registro_pass SET ult_pren = $1 WHERE UPPER(npass) = $2', [periodo, npass.toUpperCase()]);
 
-        // 3. Preparazione dati per la mail (Grafica SCRNS. 3 + Chicca Conteggio)
         const conteggioGiorni = giorni.length;
         const listaGiorniFormattati = giorni.map(d => new Date(d).toLocaleDateString('it-IT')).join(', ');
 
@@ -87,30 +99,18 @@ app.post('/api/prenota', async (req, res) => {
         res.json({ success: true });
     } catch (err) {
         console.error("Errore Salvataggio:", err.message);
-        res.status(500).json({ error: "Errore durante la prenotazione" });
+        res.status(500).json({ error: "Errore interno durante la prenotazione" });
     }
 });
 
-// --- STATISTICHE ADMIN ---
-app.get('/api/admin-stats', async (req, res) => {
-    try {
-        const result = await pool.query(`
-            SELECT data_prenotata as data, COUNT(*) as occupati, (120 - COUNT(*)) as liberi 
-            FROM prenotazioni 
-            WHERE data_prenotata >= CURRENT_DATE 
-            GROUP BY data_prenotata ORDER BY data_prenotata ASC
-        `);
-        res.json(result.rows);
-    } catch (err) {
-        res.status(500).json({ error: "Errore stats" });
-    }
-});
-// --- RECUPERA PRENOTAZIONI UTENTE ---
+// --- RECUPERA PRENOTAZIONI UTENTE (CHICCA: DISTINCT E ORDINAMENTO) ---
 app.get('/api/mie-prenotazioni/:npass', async (req, res) => {
     try {
         const { npass } = req.params;
+        // CORREZIONE 3: Usiamo DISTINCT per assicurarci che, se ci sono stati duplicati nel passato, vengano mostrati una sola volta.
+        // E mostriamo solo le prenotazioni future.
         const result = await pool.query(
-            'SELECT id, data_prenotata FROM prenotazioni WHERE UPPER(npass) = $1 AND data_prenotata >= CURRENT_DATE ORDER BY data_prenotata ASC',
+            'SELECT DISTINCT ON (data_prenotata) id, data_prenotata FROM prenotazioni WHERE UPPER(npass) = $1 AND data_prenotata >= CURRENT_DATE ORDER BY data_prenotata ASC',
             [npass.toUpperCase()]
         );
         res.json(result.rows);
@@ -135,5 +135,23 @@ app.delete('/api/elimina-prenotazioni/:npass', async (req, res) => {
         res.status(500).json({ error: "Errore eliminazione" });
     }
 });
+
+// --- ADMIN STATS (CONTA VEICOLI UNICI PER GIORNO) ---
+app.get('/api/admin-stats', async (req, res) => {
+    try {
+        // CORREZIONE 4: Il cruscotto admin ora deve contare quanti VEICOLI unici ci sono ogni giorno.
+        // In questo modo, se un veicolo è stato erroneamente salvato due volte, conta comunque 1.
+        const result = await pool.query(`
+            SELECT data_prenotata as data, COUNT(DISTINCT npass) as occupati, (120 - COUNT(DISTINCT npass)) as liberi 
+            FROM prenotazioni 
+            WHERE data_prenotata >= CURRENT_DATE 
+            GROUP BY data_prenotata ORDER BY data_prenotata ASC
+        `);
+        res.json(result.rows);
+    } catch (err) {
+        res.status(500).json({ error: "Errore stats" });
+    }
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server attivo sulla porta ${PORT}`));
