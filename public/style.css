@@ -1,176 +1,31 @@
-:root {
-    --primary: #2563eb;
-    --primary-dark: #1e40af;
-    --success: #16a34a;
-    --danger: #dc2626;
-    --bg: #f8fafc;
-    --text: #1e293b;
+.container { max-width: 600px; margin: auto; font-family: sans-serif; padding: 20px; }
+.card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 20px; }
+
+/* La griglia del calendario */
+#calendar-grid { 
+    display: grid; 
+    grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); 
+    gap: 10px; 
+    margin-bottom: 20px; 
 }
 
-body {
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
-    background-color: var(--bg);
-    color: var(--text);
-    margin: 0;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 100vh;
+.day-slot { 
+    padding: 15px 5px; 
+    border: 2px solid #e2e8f0; 
+    border-radius: 8px; 
+    text-align: center; 
+    cursor: pointer; 
+    transition: 0.3s;
+    font-weight: bold;
 }
 
-.main-container {
-    width: 95%;
-    max-width: 550px;
-    margin: 20px auto;
+.day-slot:hover { border-color: #3b82f6; background: #eff6ff; }
+
+.day-slot.selected { 
+    background: #3b82f6; 
+    color: white; 
+    border-color: #2563eb; 
 }
 
-.card {
-    background: white;
-    padding: 2.5rem;
-    border-radius: 20px;
-    box-shadow: 0 15px 35px -5px rgba(0,0,0,0.1);
-    text-align: center;
-}
-
-.fade-in {
-    animation: fadeIn 0.4s ease-out;
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(15px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-h1 { font-size: 1.8rem; margin-bottom: 0.5rem; color: #0f172a; }
-h2 { font-size: 1.2rem; margin-bottom: 1.5rem; color: #64748b; }
-
-.logo { font-size: 3rem; margin-bottom: 1rem; }
-
-input {
-    width: 100%;
-    padding: 14px;
-    margin: 10px 0;
-    border: 2px solid #e2e8f0;
-    border-radius: 12px;
-    box-sizing: border-box;
-    font-size: 1rem;
-    transition: border-color 0.2s;
-}
-
-input:focus {
-    outline: none;
-    border-color: var(--primary);
-}
-
-button {
-    width: 100%;
-    padding: 14px;
-    background: var(--primary);
-    color: white;
-    border: none;
-    border-radius: 12px;
-    font-weight: 600;
-    font-size: 1rem;
-    cursor: pointer;
-    transition: all 0.2s;
-    margin-top: 15px;
-}
-
-button:hover:not(:disabled) {
-    background: var(--primary-dark);
-    transform: translateY(-1px);
-}
-
-button:disabled {
-    background: #cbd5e1;
-    cursor: not-allowed;
-}
-
-/* Calendario */
-.calendar-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1.5rem;
-}
-
-.calendar-header h2 { margin: 0; color: var(--text); text-transform: capitalize; }
-
-.nav-btn {
-    width: auto;
-    background: #f1f5f9;
-    color: var(--text);
-    padding: 8px 15px;
-    margin: 0;
-}
-
-.grid-calendario {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 8px;
-    margin-bottom: 20px;
-}
-
-.giorno {
-    padding: 15px 5px;
-    background: #f1f5f9;
-    border-radius: 10px;
-    cursor: pointer;
-    font-weight: 600;
-    transition: 0.2s;
-    border: 2px solid transparent;
-}
-
-.giorno:hover:not(.pieno) { background: #e2e8f0; }
-
-.giorno.selezionato {
-    background: var(--primary);
-    color: white;
-    border-color: var(--primary-dark);
-}
-
-.giorno.pieno {
-    background: #fee2e2;
-    color: #991b1b;
-    cursor: not-allowed;
-    text-decoration: line-through;
-    opacity: 0.6;
-}
-
-/* Riepilogo */
-#riepilogo-dati {
-    background: #f8fafc;
-    padding: 20px;
-    border-radius: 12px;
-    margin: 20px 0;
-    text-align: left;
-    border: 1px solid #e2e8f0;
-}
-
-.success-icon { font-size: 4rem; color: var(--success); margin-bottom: 1rem; }
-
-ul {
-    list-style: none;
-    padding: 0;
-    margin: 10px 0;
-    max-height: 120px;
-    overflow-y: auto;
-    border-top: 1px solid #e2e8f0;
-    padding-top: 10px;
-}
-
-li {
-    padding: 4px 0;
-    font-size: 0.9rem;
-    color: #475569;
-}
-
-li::before { content: "• "; color: var(--primary); font-weight: bold; }
-
-.nota-email {
-    font-weight: 600;
-    color: var(--primary);
-    background: #eff6ff;
-    padding: 12px;
-    border-radius: 10px;
-}
+button { width: 100%; padding: 12px; background: #3b82f6; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; }
+input { width: 95%; padding: 10px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 8px; }
