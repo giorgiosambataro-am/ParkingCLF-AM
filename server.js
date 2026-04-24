@@ -15,7 +15,7 @@ const pool = new Pool({
     rejectUnauthorized: false
   },
   // Impostazioni specifiche per il Pooler (pgbouncer)
-  max: 20,
+  max: 10,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 10000,
 });
