@@ -9,6 +9,7 @@ function show(id) {
 
 async function doLogin() {
     userPass = document.getElementById('in-npass').value.trim().toUpperCase();
+    if(!userPass) return;
     const res = await fetch('/api/valida-pass', {
         method: 'POST', headers: {'Content-Type':'application/json'},
         body: JSON.stringify({npass: userPass})
@@ -40,12 +41,15 @@ function buildCal() {
 }
 
 async function inviaPren() {
-    if(selectedDays.length === 0) return alert("Seleziona almeno un giorno");
+    const email = document.getElementById('u-email').value;
+    if(selectedDays.length === 0) return alert("Seleziona i giorni");
+    if(!email) return alert("Inserisci la mail per la conferma");
+
     const res = await fetch('/api/prenota', {
         method: 'POST', headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({npass: userPass, giorni: selectedDays})
+        body: JSON.stringify({npass: userPass, giorni: selectedDays, email: email})
     });
-    if(res.ok) { alert("Prenotazione Salvata!"); location.reload(); }
+    if(res.ok) { alert("Prenotazione Inviata e Mail in arrivo!"); location.reload(); }
 }
 
 async function cercaPass() {
@@ -56,17 +60,17 @@ async function cercaPass() {
         foundRes = data.prenotazione;
         document.getElementById('panel-piantone').classList.remove('hidden');
         document.getElementById('lab-pass').innerText = foundRes.npass;
-        document.getElementById('lab-stato').innerText = "Stato: " + foundRes.stato;
+        document.getElementById('lab-stato').innerText = foundRes.stato;
         
-        // Visualizzazione Orari sotto i tasti
+        // Orari sotto i tasti
         document.getElementById('time-e').innerText = foundRes.orario_ingresso ? 
-            `Entrato il ${new Date(foundRes.orario_ingresso).toLocaleDateString()} alle ${new Date(foundRes.orario_ingresso).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}` : "Non entrato";
+            `Entrato: ${new Date(foundRes.orario_ingresso).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}` : "Non entrato";
         document.getElementById('time-u').innerText = foundRes.orario_uscita ? 
-            `Uscito il ${new Date(foundRes.orario_uscita).toLocaleDateString()} alle ${new Date(foundRes.orario_uscita).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}` : "Non uscito";
+            `Uscito: ${new Date(foundRes.orario_uscita).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}` : "Non uscito";
 
         document.getElementById('b-e').disabled = foundRes.stato !== 'PRENOTATO';
         document.getElementById('b-u').disabled = foundRes.stato !== 'INGRESSO';
-    } else alert("Nessuna prenotazione per oggi");
+    } else alert("Nessuna prenotazione trovata");
 }
 
 async function mossa(tipo) {
@@ -81,14 +85,14 @@ async function aggiornaMonitor() {
     const res = await fetch('/api/riepilogo-totale');
     const dati = await res.json();
     const tab = document.getElementById('tab-monitor');
-    // Filtra solo quelli dentro ora
     const dentro = dati.filter(x => x.stato === 'INGRESSO');
     tab.innerHTML = `<tr><th>PASS</th><th>INGRESSO</th><th>STATO</th></tr>`;
-    tab.innerHTML += dentro.map(x => {
-        const oraI = new Date(x.orario_ingresso).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-        const scad = new Date(x.data_prenotata).toLocaleDateString();
-        return `<tr><td><b>${x.npass}</b><br>Scad: ${scad}</td><td>Ore ${oraI}</td><td><span style="color:green">DENTRO</span></td></tr>`;
-    }).join('');
+    tab.innerHTML += dentro.map(x => `
+        <tr>
+            <td><b>${x.npass}</b><br>Scad: ${new Date(x.data_prenotata).toLocaleDateString()}</td>
+            <td> Ore ${new Date(x.orario_ingresso).toLocaleTimeString([],{hour:'2-digit', minute:'2-digit'})}</td>
+            <td><span style="color:green; font-weight:bold;">DENTRO</span></td>
+        </tr>`).join('');
 }
 
 async function mostraRiepilogo() {
