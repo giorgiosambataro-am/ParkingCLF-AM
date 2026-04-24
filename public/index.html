@@ -4,66 +4,43 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Parcheggio C.L. Fontanarossa</title>
-    <link rel="stylesheet" href="style.css">
+    <style>
+        body { font-family: sans-serif; background: #f0f2f5; display: flex; justify-content: center; padding: 20px; }
+        .card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 100%; max-width: 400px; text-align: center; }
+        input, button { width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; border: 1px solid #ddd; box-sizing: border-box; }
+        button { background: #3b82f6; color: white; font-weight: bold; cursor: pointer; border: none; }
+        .day-slot { display: inline-block; padding: 10px; border: 1px solid #eee; margin: 2px; cursor: pointer; border-radius: 5px; }
+        .selected { background: #3b82f6; color: white; }
+        .status-tag { padding: 4px 8px; border-radius: 5px; color: white; font-size: 11px; font-weight: bold; }
+        table { width: 100%; margin-top: 15px; border-collapse: collapse; font-size: 13px; }
+        th, td { padding: 8px; border-bottom: 1px solid #eee; text-align: left; }
+    </style>
 </head>
 <body>
-    <div class="container">
-        <div id="login-section" class="card">
-            <h1>Parcheggio C.L.</h1>
-            <input type="text" id="npass" placeholder="Inserisci NPASS (es. D003A)">
-            <button onclick="verificaAccesso()">Accedi</button>
+    <div class="card">
+        <div id="login-section">
+            <h2>🅿️ Accesso Parcheggio</h2>
+            <input type="text" id="npass" placeholder="Inserisci NPASS">
+            <button onclick="verificaAccesso()">Entra</button>
         </div>
 
-        <div id="calendar-section" class="card" style="display:none;">
-            <h1>Prenota Posto 🅿️</h1>
-            <div id="calendar-grid"></div>
-            <input type="email" id="email-utente" placeholder="La tua email per ricevuta">
-            <button onclick="confermaPrenotazioni()">Conferma Prenotazione</button>
-            <button onclick="mostraMiePrenotazioni()" style="background:#64748b; margin-top:10px;">Le mie prenotazioni</button>
-        </div>
-
-        <div id="my-reservations-section" class="card" style="display:none;">
-            <h1>Le mie Prenotazioni</h1>
-            <div id="list-reservations"></div>
-            <button onclick="eliminaTuttePrenotazioni()" style="background:#ef4444; margin-top:10px;">Elimina Tutte</button>
-            <button onclick="tornaAlCalendario()" style="background:#64748b; margin-top:10px;">Indietro</button>
-        </div>
-
-        <div id="success-section" class="card" style="display:none;">
-            <h1>Confermato! ✅</h1>
-            <p id="success-msg"></p>
-            <div class="summary-item"><b>Periodo:</b> <span id="res-periodo"></span></div>
-            <div class="summary-item"><b>Giorni:</b> <span id="res-giorni"></span></div>
-            <button onclick="location.reload()">Esci</button>
-        </div>
-
-        <div id="piantone-section" class="card" style="display:none;">
-            <h1>Controllo Sbarra 🚧</h1>
+        <div id="piantone-section" style="display:none;">
+            <h2>Controllo Sbarra 🚧</h2>
             <input type="text" id="search-npass" placeholder="Cerca NPASS">
             <button onclick="cercaPassPiantone()">Cerca</button>
-            <div id="piantone-risultato" style="display:none; margin-top:15px; padding:15px; background:#f8fafc; border-radius:10px;">
+            <div id="piantone-risultato" style="display:none; background:#f8fafc; padding:15px; border-radius:10px; margin-top:10px;">
                 <h3 id="p-npass"></h3>
-                <p>Stato: <b id="p-stato"></b></p>
+                <p id="p-info-stato" style="font-size:14px; font-weight:bold;"></p>
                 <button id="btn-e" onclick="azionePiantone('E')" style="background:#22c55e;">ENTRATA (E)</button>
                 <button id="btn-u" onclick="azionePiantone('U')" style="background:#f59e0b;">USCITA (U)</button>
             </div>
             <hr>
-            <h3>🚗 Veicoli nel Parcheggio</h3>
-            <div id="monitor-container">
-                <table style="width:100%; font-size:12px;" id="monitor-table"></table>
-            </div>
-            <button onclick="location.reload()" style="background:#64748b; margin-top:10px;">Log-out</button>
+            <h4>🏎️ Veicoli nel Parcheggio</h4>
+            <table id="monitor-table"></table>
+            <button onclick="location.reload()" style="background:#64748b;">Esci</button>
         </div>
 
-        <div id="admin-section" class="card" style="display:none;">
-            <h1>Report Posti</h1>
-            <table>
-                <thead><tr><th>Data</th><th>Occ.</th><th>Lib.</th></tr></thead>
-                <tbody id="admin-table-body"></tbody>
-            </table>
-            <button onclick="location.reload()">Esci</button>
         </div>
-    </div>
     <script src="script.js"></script>
 </body>
 </html>
