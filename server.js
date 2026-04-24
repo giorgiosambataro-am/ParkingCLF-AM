@@ -86,4 +86,25 @@ app.post('/api/prenota', async (req, res) => {
         await transporter.sendMail(mailOptions);
         res.json({ success: true });
     } catch (err) {
-        console.error("Errore Salvataggio:", err.message
+        console.error("Errore Salvataggio:", err.message);
+        res.status(500).json({ error: "Errore durante la prenotazione" });
+    }
+});
+
+// --- STATISTICHE ADMIN ---
+app.get('/api/admin-stats', async (req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT data_prenotata as data, COUNT(*) as occupati, (120 - COUNT(*)) as liberi 
+            FROM prenotazioni 
+            WHERE data_prenotata >= CURRENT_DATE 
+            GROUP BY data_prenotata ORDER BY data_prenotata ASC
+        `);
+        res.json(result.rows);
+    } catch (err) {
+        res.status(500).json({ error: "Errore stats" });
+    }
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Server attivo sulla porta ${PORT}`));
