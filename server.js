@@ -8,19 +8,25 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+const { Pool } = require('pg');
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
+  ssl: { rejectUnauthorized: false },
+  max: 10,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 10000,
 });
 
-// Questo log è fondamentale: leggilo nella dashboard di Render!
+// Questo log apparirà nei log di Render
 pool.query('SELECT NOW()', (err, res) => {
   if (err) {
     console.error('❌ ERRORE CONNESSIONE:', err.message);
   } else {
-    console.log('✅ DATABASE AGGANCIATO!');
+    console.log('✅ DATABASE AGGANCIATO E FUNZIONANTE!');
   }
 });
+
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: { 
