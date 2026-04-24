@@ -46,7 +46,6 @@ function generaCalendario() {
     
     const oggi = new Date();
     // Calcola l'ultimo giorno del mese successivo
-    // (Mese corrente + 2, giorno 0 = ultimo giorno del mese precedente a quello indicato)
     const fineMeseSuccessivo = new Date(oggi.getFullYear(), oggi.getMonth() + 2, 0);
     
     let dataCursore = new Date(oggi);
@@ -74,7 +73,7 @@ function generaCalendario() {
 }
 
 /**
- * PRENOTAZIONE: Invia i giorni selezionati al server
+ * PRENOTAZIONE CON GESTIONE ERRORI DI DUPLICATI
  */
 async function confermaPrenotazioni() {
     const email = document.getElementById('email-utente').value.trim();
@@ -95,6 +94,15 @@ async function confermaPrenotazioni() {
             })
         });
 
+        // GESTIONE DEI DUPLICATI DALLA RISPOSTA DEL SERVER
+        if (res.status === 409) {
+            const dataError = await res.json();
+            alert(`⚠️ ATTENZIONE: ${dataError.error}`);
+            // Purtroppo non possiamo farti prenotare, controlla le tue prenotazioni
+            tornaAlCalendario();
+            return;
+        }
+
         if (res.ok) {
             const periodo = `dal ${formattaData(giorniSelezionati[0])} al ${formattaData(giorniSelezionati[giorniSelezionati.length-1])}`;
             const elenco = `${giorniSelezionati.length} (${giorniSelezionati.map(d => formattaData(d)).join(', ')})`;
@@ -114,7 +122,7 @@ async function confermaPrenotazioni() {
 }
 
 /**
- * GESTIONE PERSONALE: Mostra le prenotazioni già effettuate
+ * GESTIONE PERSONALE: Mostra le prenotazioni già effettuate (con chicca DISTINTA)
  */
 async function mostraMiePrenotazioni() {
     try {
