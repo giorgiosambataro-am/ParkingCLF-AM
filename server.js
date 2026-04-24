@@ -47,25 +47,41 @@ app.post('/api/valida-pass', async (req, res) => {
     }
 });
 
+// --- PRENOTAZIONE ---
 app.post('/api/prenota', async (req, res) => {
     const { npass, giorni, utente } = req.body;
     try {
+        // ... (resto della logica INSERT rimane uguale) ...
         for (let data of giorni) {
             await pool.query('INSERT INTO prenotazioni (npass, data_prenotata) VALUES ($1, $2)', [npass.toUpperCase(), data]);
         }
+        
         const periodo = `dal ${new Date(giorni[0]).toLocaleDateString('it-IT')} al ${new Date(giorni[giorni.length-1]).toLocaleDateString('it-IT')}`;
         await pool.query('UPDATE registro_pass SET ult_pren = $1 WHERE UPPER(npass) = $2', [periodo, npass.toUpperCase()]);
 
-        await transporter.sendMail({
+        // NUOVO TEMPLATE MAIL (SCRNS. 3)
+        const mailOptions = {
             from: 'parkingclf.am@gmail.com',
             to: utente,
             cc: 'parkingclf.am@gmail.com',
-            subject: `Conferma Parcheggio C.L. Fontanarossa - ${npass}`,
-            html: `<h3>Prenotazione Confermata</h3><p>Periodo: <b>${periodo}</b></p>`
-        });
+            subject: `Conferma Prenotazione C.L. Fontanarossa - ${npass.toUpperCase()}`,
+            html: `
+            <div style="font-family: sans-serif; border: 2px solid #3b82f6; border-radius: 20px; padding: 25px; max-width: 600px; color: #333;">
+                <h2 style="color: #3b82f6; margin-top: 0;">🅿️ Parcheggio C.L. Fontanarossa</h2>
+                <p>Gentile utente <b>${npass.toUpperCase()}</b>, la tua prenotazione è confermata.</p>
+                <p><b>Periodo:</b> ${periodo}</p>
+                <p><b>Giorni:</b> ${giorni.map(d => new Date(d).toLocaleDateString('it-IT')).join(', ')}</p>
+                <hr style="border: 0; border-top: 1px solid #ddd; margin: 20px 0;">
+                <p style="font-size: 14px; color: #666;">Sistema di prenotazione Parcheggio C.L. Fontanarossa</p>
+            </div>
+            `
+        };
+
+        await transporter.sendMail(mailOptions);
         res.json({ success: true });
     } catch (err) {
-        res.status(500).send("Errore");
+        console.error("Errore Salvataggio:", err.message);
+        res.status(500).json({ error: "Errore durante la prenotazione" });
     }
 });
 
