@@ -27,29 +27,32 @@
         </div>
 
         <div id="view-piantone" class="hidden">
-            <h3 style="text-align:center;">Controllo Sbarra 🚧</h3>
-            <div style="display:flex;gap:10px;"><input type="text" id="search-p" placeholder="D0003"><button style="width:100px" onclick="cercaPass()">Cerca</button></div>
-            
-            <div id="panel-piantone" class="hidden" style="text-align:center; margin-top:20px;">
-                <h3 id="lab-pass">PASS: ---</h3>
-                <p id="lab-stato">Stato attuale: ---</p>
-                
-                <div style="display:flex; gap:15px; margin-top:15px;">
-                    <div class="btn-container">
-                        <button class="btn-green" onclick="mossa('E')">ENTRATA (08:00)</button>
-                        <div id="date-e" class="btn-sub-date">--/--/----</div>
-                    </div>
-                    <div class="btn-container">
-                        <button class="btn-orange" onclick="mossa('U')">USCITA (12:00)</button>
-                        <div id="date-u" class="btn-sub-date">--/--/----</div>
-                    </div>
-                </div>
+    <h3 style="text-align:center;">Controllo Sbarra 🚧</h3>
+    <div style="display:flex;gap:10px;">
+        <input type="text" id="search-p" placeholder="Inserisci Pass...">
+        <button style="width:100px" onclick="cercaPass()">Cerca</button>
+    </div>
+    
+    <div id="panel-piantone" class="hidden" style="text-align:center; margin-top:20px;">
+        <h3 id="lab-pass">PASS: ---</h3>
+        <p id="lab-stato">Stato attuale: ---</p>
+        
+        <div style="display:flex; gap:15px; margin-top:15px;">
+            <div class="btn-container">
+                <button class="btn-green" onclick="mossa('E')">ENTRATA (E)</button>
+                <div id="info-e" class="btn-sub-date">Data: --/--/---- <br> Ore: --:--</div>
             </div>
-
-            <h4 style="margin-top:25px;text-align:center;">🏎️ Veicoli nel Parcheggio</h4>
-            <div id="lista-veicoli"></div>
-            <button class="btn-gray" onclick="location.reload()">Log-out</button>
+            <div class="btn-container">
+                <button class="btn-orange" onclick="mossa('U')">USCITA (U)</button>
+                <div id="info-u" class="btn-sub-date">Data: --/--/---- <br> Ore: --:--</div>
+            </div>
         </div>
+    </div>
+
+    <h4 style="margin-top:25px;text-align:center;">🏎️ Veicoli nel Parcheggio</h4>
+    <div id="lista-veicoli"></div>
+    <button class="btn-gray" onclick="location.reload()">Log-out</button>
+</div>
 
         <div id="view-admin" class="hidden">
             <h3>📊 Cruscotto Amministratore</h3>

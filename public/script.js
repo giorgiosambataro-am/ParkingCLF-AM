@@ -20,26 +20,59 @@ async function cercaPass() {
     const p = document.getElementById('search-p').value.trim().toUpperCase();
     const res = await fetch(`/api/piantone/cerca/${p}`);
     const data = await res.json();
+
     if(data.trovato) {
         currentPrenotazioni = data.prenotazioni;
-        const prima = currentPrenotazioni[0];
-        const ultima = currentPrenotazioni[currentPrenotazioni.length - 1];
+        const p = currentPrenotazioni[0]; // Prendiamo la prenotazione del giorno
         
         document.getElementById('panel-piantone').classList.remove('hidden');
-        document.getElementById('lab-pass').innerText = "PASS: " + prima.npass;
-        document.getElementById('lab-stato').innerText = "Stato attuale: " + prima.stato;
+        document.getElementById('lab-pass').innerText = "PASS: " + p.npass;
+        document.getElementById('lab-stato').innerText = "Stato: " + p.stato;
         
-        // Imposta le date sotto i pulsanti
-        document.getElementById('date-e').innerText = new Date(prima.data_prenotata).toLocaleDateString('it-IT');
-        document.getElementById('date-u').innerText = new Date(ultima.data_prenotata).toLocaleDateString('it-IT');
-    } else alert("Nessuna prenotazione attiva.");
+        // Formattazione Data e Ora per i campi sotto i pulsanti
+        const formatInfo = (dataIso, oraIso) => {
+            if(!dataIso) return "Nessun dato";
+            const d = new Date(dataIso).toLocaleDateString('it-IT');
+            const t = oraIso ? new Date(oraIso).toLocaleTimeString('it-IT', {hour:'2-digit', minute:'2-digit'}) : "--:--";
+            return `Data: ${d} <br> Ore: ${t}`;
+        };
+
+        document.getElementById('info-e').innerHTML = formatInfo(p.data_prenotata, p.orario_ingresso);
+        document.getElementById('info-u').innerHTML = formatInfo(p.data_prenotata, p.orario_uscita);
+        
+        aggiornaVeicoli();
+    } else {
+        alert("Nessun pass trovato per oggi.");
+    }
 }
 
 async function mossa(tipo) {
-    const id = (tipo === 'E') ? currentPrenotazioni[0].id : currentPrenotazioni[currentPrenotazioni.length-1].id;
-    await fetch('/api/piantone/azione', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({id: id, azione: tipo}) });
-    alert("Operazione registrata");
-    cercaPass();
+    const p = currentPrenotazioni[0];
+    const res = await fetch('/api/piantone/azione', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ id: p.id, azione: tipo })
+    });
+    
+    if(res.ok) {
+        cercaPass(); // Ricarica i dati per mostrare l'ora appena registrata
+    }
+}
+
+async function aggiornaVeicoli() {
+    const res = await fetch('/api/veicoli-dentro');
+    const dati = await res.json();
+    document.getElementById('lista-veicoli').innerHTML = `
+        <table>
+            <tr><th>NPASS</th><th>Movimento</th><th>Stato</th></tr>
+            ${dati.map(x => `
+                <tr>
+                    <td><b>${x.npass}</b></td>
+                    <td>ENTRATO (${new Date(x.orario_ingresso).toLocaleTimeString('it-IT', {hour:'2-digit', minute:'2-digit'})})</td>
+                    <td><span class="badge" style="background:var(--green)">In Regola</span></td>
+                </tr>
+            `).join('')}
+        </table>`;
 }
 
 async function mostraAdmin() {
