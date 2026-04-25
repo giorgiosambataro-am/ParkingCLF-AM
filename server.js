@@ -30,7 +30,7 @@ app.post('/api/valida-pass', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// PRENOTAZIONE CON DOPPIO INVIO MAIL (IMG 5)
+// PRENOTAZIONE CON DOPPIO INVIO (UTENTE + PARCHEGGIO)
 app.post('/api/prenota', async (req, res) => {
     const { npass, giorni, email } = req.body;
     try {
@@ -41,14 +41,13 @@ app.post('/api/prenota', async (req, res) => {
         
         const mailOptions = {
             from: '"Parcheggio C.L. Fontanarossa" <parkingclf.am@gmail.com>',
-            to: [email, 'parkingclf.am@gmail.com'], // Invia a utente e al parcheggio
+            to: [email, 'parkingclf.am@gmail.com'],
             subject: `Conferma Prenotazione - ${npass.toUpperCase()}`,
             html: `
                 <div style="font-family:sans-serif; border:2px solid #3b82f6; border-radius:15px; padding:20px; max-width:600px;">
                     <h2 style="color:#3b82f6;">🅿️ Parcheggio C.L. Fontanarossa</h2>
-                    <p>Conferma prenotazione per il PASS: <b>${npass.toUpperCase()}</b></p>
-                    <p><b>Giorni prenotati:</b> ${sorted.map(d => new Date(d).toLocaleDateString('it-IT')).join(', ')}</p>
-                    <p><b>Periodo:</b> dal ${new Date(sorted[0]).toLocaleDateString('it-IT')} al ${new Date(sorted[sorted.length-1]).toLocaleDateString('it-IT')}</p>
+                    <p>Conferma per il PASS: <b>${npass.toUpperCase()}</b></p>
+                    <p><b>Date:</b> ${sorted.map(d => new Date(d).toLocaleDateString('it-IT')).join(', ')}</p>
                 </div>`
         };
         await transporter.sendMail(mailOptions);
@@ -56,13 +55,13 @@ app.post('/api/prenota', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// LISTA UTENTE
+// LISTA MIE DATE
 app.get('/api/mie-prenotazioni/:npass', async (req, res) => {
     const r = await pool.query('SELECT data_prenotata, stato FROM prenotazioni WHERE UPPER(npass) = $1 AND data_prenotata >= CURRENT_DATE ORDER BY data_prenotata ASC', [req.params.npass.toUpperCase()]);
     res.json(r.rows);
 });
 
-// PIANTONE: RICERCA E AZIONE (IMG 4)
+// PIANTONE
 app.get('/api/piantone/cerca/:npass', async (req, res) => {
     const r = await pool.query('SELECT * FROM prenotazioni WHERE UPPER(npass) = $1 AND data_prenotata >= CURRENT_DATE ORDER BY data_prenotata ASC', [req.params.npass.toUpperCase()]);
     res.json(r.rows.length > 0 ? { trovato: true, prenotazioni: r.rows } : { trovato: false });
@@ -71,12 +70,11 @@ app.get('/api/piantone/cerca/:npass', async (req, res) => {
 app.post('/api/piantone/azione', async (req, res) => {
     const { id, azione } = req.body;
     const ora = new Date();
-    const stato = azione === 'E' ? 'INGRESSO' : 'USCITO';
-    await pool.query(`UPDATE prenotazioni SET stato = $1, ${azione === 'E' ? 'orario_ingresso' : 'orario_uscita'} = $2 WHERE id = $3`, [stato, ora, id]);
+    await pool.query(`UPDATE prenotazioni SET stato = $1, ${azione === 'E' ? 'orario_ingresso' : 'orario_uscita'} = $2 WHERE id = $3`, [azione === 'E' ? 'INGRESSO' : 'USCITO', ora, id]);
     res.json({ success: true });
 });
 
-// ADMIN: CRUSCOTTO
+// ADMIN
 app.get('/api/admin/cruscotto', async (req, res) => {
     const r = await pool.query('SELECT data_prenotata, COUNT(*) as occupati FROM prenotazioni WHERE data_prenotata >= CURRENT_DATE GROUP BY data_prenotata ORDER BY data_prenotata ASC');
     res.json(r.rows.map(row => ({
