@@ -31,16 +31,24 @@ function buildCal() {
 
 async function inviaPren() {
     const email = document.getElementById('u-email').value;
-    if(!selectedDays.length || !email) return alert("Seleziona date e email!");
+    if(!selectedDays.length || !email) return alert("Dati mancanti!");
     const res = await fetch('/api/prenota', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({npass:userPass, giorni:selectedDays, email:email}) });
-    if(res.ok) alert("Prenotazione Inviata! Email di conferma spedita.");
+    if(res.ok) {
+        // Popola Riepilogo come IMG 3
+        document.getElementById('summary-details').innerHTML = `
+            <div class="summary-item"><b>Pass:</b> ${userPass}</div>
+            <div class="summary-item"><b>Email:</b> ${email}</div>
+            <div class="summary-item"><b>Date:</b> ${selectedDays.sort().map(d => new Date(d).toLocaleDateString('it-IT')).join(', ')}</div>
+        `;
+        show('view-success');
+    }
 }
 
 async function mostraMie() {
     show('view-my-list');
     const res = await fetch(`/api/mie-prenotazioni/${userPass}`);
     const dati = await res.json();
-    document.getElementById('my-list-content').innerHTML = dati.map(p => `<div style="padding:10px; background:#f8fafc; border-radius:10px; margin:5px 0;">📅 ${new Date(p.data_prenotata).toLocaleDateString('it-IT')} - <b>${p.stato}</b></div>`).join('') || "Nessuna prenotazione.";
+    document.getElementById('my-list-content').innerHTML = dati.map(p => `<div style="padding:10px; background:#f8fafc; border-radius:10px; margin:5px 0;">📅 ${new Date(p.data_prenotata).toLocaleDateString('it-IT')} - <b>${p.stato}</b></div>`).join('') || "Nessuna data.";
 }
 
 async function cercaPass() {
@@ -51,14 +59,10 @@ async function cercaPass() {
         currentPren = data.prenotazioni[0];
         document.getElementById('panel-piantone').classList.remove('hidden');
         document.getElementById('lab-pass').innerText = "PASS: " + currentPren.npass;
-        
-        const format = (d, t) => {
-            if(!t) return "--/--/----<br>--:--";
-            return `${new Date(d).toLocaleDateString('it-IT')}<br>Ore ${new Date(t).toLocaleTimeString('it-IT', {hour:'2-digit', minute:'2-digit'})}`;
-        };
-        document.getElementById('info-e').innerHTML = format(currentPren.data_prenotata, currentPren.orario_ingresso);
-        document.getElementById('info-u').innerHTML = format(currentPren.data_prenotata, currentPren.orario_uscita);
-    } else alert("Pass non trovato per oggi");
+        const fmt = (d, t) => t ? `${new Date(d).toLocaleDateString('it-IT')}<br>Ore ${new Date(t).toLocaleTimeString('it-IT', {hour:'2-digit', minute:'2-digit'})}` : "--/--/----<br>--:--";
+        document.getElementById('info-e').innerHTML = fmt(currentPren.data_prenotata, currentPren.orario_ingresso);
+        document.getElementById('info-u').innerHTML = fmt(currentPren.data_prenotata, currentPren.orario_uscita);
+    } else alert("Non trovato");
 }
 
 async function mossa(tipo) {
@@ -76,5 +80,5 @@ async function aggiornaVeicoli() {
 async function mostraAdmin() {
     const res = await fetch('/api/admin/cruscotto');
     const dati = await res.json();
-    document.getElementById('tab-admin').innerHTML = `<tr><th>Data</th><th>Posti Liberi</th></tr>${dati.map(x => `<tr><td>${x.data}</td><td style="color:var(--green); font-weight:bold;">${x.liberi} / 120</td></tr>`).join('')}`;
+    document.getElementById('tab-admin').innerHTML = `<tr><th>Data</th><th>Liberi</th></tr>${dati.map(x => `<tr><td>${x.data}</td><td style="color:var(--green); font-weight:bold;">${x.liberi} / 120</td></tr>`).join('')}`;
 }
