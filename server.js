@@ -30,14 +30,19 @@ app.post('/api/valida-pass', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// PRENOTAZIONE CON DOPPIO INVIO (UTENTE + PARCHEGGIO)
+// PRENOTAZIONE (Salva come unico record con Inizio e Fine)
 app.post('/api/prenota', async (req, res) => {
     const { npass, giorni, email } = req.body;
     try {
         const sorted = giorni.sort();
-        for (let d of sorted) {
-            await pool.query('INSERT INTO prenotazioni (npass, data_prenotata, stato) VALUES ($1, $2, $3)', [npass.toUpperCase(), d, 'PRENOTATO']);
-        }
+        const dataInizio = sorted[0];
+        const dataFine = sorted[sorted.length - 1];
+
+        // Inserisce un UNICO record per tutta la prenotazione
+        await pool.query(
+            'INSERT INTO prenotazioni (npass, data_inizio, data_fine, stato) VALUES ($1, $2, $3, $4)', 
+            [npass.toUpperCase(), dataInizio, dataFine, 'PRENOTATO']
+        );
         
         const mailOptions = {
             from: '"Parcheggio C.L. Fontanarossa" <parkingclf.am@gmail.com>',
@@ -47,7 +52,7 @@ app.post('/api/prenota', async (req, res) => {
                 <div style="font-family:sans-serif; border:2px solid #3b82f6; border-radius:15px; padding:20px; max-width:600px;">
                     <h2 style="color:#3b82f6;">🅿️ Parcheggio C.L. Fontanarossa</h2>
                     <p>Conferma per il PASS: <b>${npass.toUpperCase()}</b></p>
-                    <p><b>Date:</b> ${sorted.map(d => new Date(d).toLocaleDateString('it-IT')).join(', ')}</p>
+                    <p><b>Periodo Prenotato:</b> dal ${new Date(dataInizio).toLocaleDateString('it-IT')} al ${new Date(dataFine).toLocaleDateString('it-IT')}</p>
                 </div>`
         };
         await transporter.sendMail(mailOptions);
@@ -55,16 +60,19 @@ app.post('/api/prenota', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// LISTA MIE DATE
+// LISTA MIE PRENOTAZIONI
 app.get('/api/mie-prenotazioni/:npass', async (req, res) => {
-    const r = await pool.query('SELECT data_prenotata, stato FROM prenotazioni WHERE UPPER(npass) = $1 AND data_prenotata >= CURRENT_DATE ORDER BY data_prenotata ASC', [req.params.npass.toUpperCase()]);
+    const r = await pool.query('SELECT data_inizio, data_fine, stato FROM prenotazioni WHERE UPPER(npass) = $1 AND data_fine >= CURRENT_DATE ORDER BY data_inizio ASC', [req.params.npass.toUpperCase()]);
     res.json(r.rows);
 });
 
-// PIANTONE
+// PIANTONE: CERCA IL RECORD UNICO
 app.get('/api/piantone/cerca/:npass', async (req, res) => {
-    const r = await pool.query('SELECT * FROM prenotazioni WHERE UPPER(npass) = $1 AND data_prenotata >= CURRENT_DATE ORDER BY data_prenotata ASC', [req.params.npass.toUpperCase()]);
-    res.json(r.rows.length > 0 ? { trovato: true, prenotazioni: r.rows } : { trovato: false });
+    const r = await pool.query(
+        'SELECT * FROM prenotazioni WHERE UPPER(npass) = $1 AND data_fine >= CURRENT_DATE ORDER BY data_inizio ASC LIMIT 1', 
+        [req.params.npass.toUpperCase()]
+    );
+    res.json(r.rows.length > 0 ? { trovato: true, prenotazione: r.rows[0] } : { trovato: false });
 });
 
 app.post('/api/piantone/azione', async (req, res) => {
@@ -74,18 +82,30 @@ app.post('/api/piantone/azione', async (req, res) => {
     res.json({ success: true });
 });
 
-// ADMIN
+// ADMIN: Calcola occupazione verificando se il giorno è compreso tra Inizio e Fine
 app.get('/api/admin/cruscotto', async (req, res) => {
-    const r = await pool.query('SELECT data_prenotata, COUNT(*) as occupati FROM prenotazioni WHERE data_prenotata >= CURRENT_DATE GROUP BY data_prenotata ORDER BY data_prenotata ASC');
-    res.json(r.rows.map(row => ({
-        data: new Date(row.data_prenotata).toLocaleDateString('it-IT'),
-        occupati: row.occupati,
-        liberi: 120 - row.occupati
-    })));
+    try {
+        // Query che genera i prossimi 15 giorni e conta quante prenotazioni li coprono
+        const query = `
+            WITH giorni AS (
+                SELECT generate_series(CURRENT_DATE, CURRENT_DATE + interval '14 days', '1 day')::date AS d
+            )
+            SELECT g.d AS data, COUNT(p.id) AS occupati
+            FROM giorni g
+            LEFT JOIN prenotazioni p ON g.d BETWEEN p.data_inizio AND p.data_fine
+            GROUP BY g.d ORDER BY g.d;
+        `;
+        const r = await pool.query(query);
+        res.json(r.rows.map(row => ({
+            data: new Date(row.data).toLocaleDateString('it-IT'),
+            occupati: parseInt(row.occupati),
+            liberi: 120 - parseInt(row.occupati)
+        })));
+    } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.get('/api/veicoli-dentro', async (req, res) => {
-    const r = await pool.query("SELECT npass, data_prenotata, orario_ingresso FROM prenotazioni WHERE stato = 'INGRESSO' ORDER BY orario_ingresso DESC");
+    const r = await pool.query("SELECT npass, data_fine, orario_ingresso FROM prenotazioni WHERE stato = 'INGRESSO'");
     res.json(r.rows);
 });
 
