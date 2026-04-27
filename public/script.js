@@ -20,7 +20,7 @@ async function doLogin() {
 function buildCal() {
     const grid = document.getElementById('cal-grid'); grid.innerHTML = ""; selectedDays = [];
     let d = new Date();
-    for(let i=0; i<30; i++) {
+    for(let i=0; i<45; i++) {
         const iso = d.toISOString().split('T')[0];
         const slot = document.createElement('div'); slot.className = "day-slot";
         slot.innerText = d.toLocaleDateString('it-IT', {day:'2-digit', month:'2-digit'});
