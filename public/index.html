@@ -50,6 +50,18 @@
             <button onclick="inviaPren()">INVIA PRENOTAZIONE</button>
             <button class="btn-gray" onclick="mostraMie()">Le mie prenotazioni</button>
             <button class="btn-red" style="margin-top:15px;" onclick="location.reload()">ESCI</button>
+            <style>
+    .btn-delete { color: var(--red); cursor: pointer; font-size: 18px; font-weight: bold; }
+    .pren-row { display: flex; justify-content: space-between; align-items: center; padding: 12px; background: #f8fafc; border-radius: 12px; margin-bottom: 8px; border: 1px solid #e2e8f0; }
+</style>
+
+<button onclick="inviaPren()">INVIA PRENOTAZIONE</button>
+
+<div id="view-my-list" class="hidden">
+    <h3>Le mie Date</h3>
+    <div id="my-list-content"></div>
+    <button class="btn-gray" onclick="show('view-user')">Indietro</button>
+</div>
         </div>
 
         <div id="view-my-list" class="hidden">

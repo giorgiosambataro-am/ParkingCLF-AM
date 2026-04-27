@@ -32,6 +32,10 @@ function buildCal() {
 async function inviaPren() {
     const email = document.getElementById('u-email').value;
     if(!selectedDays.length || !email) return alert("Dati mancanti!");
+    if (selectedDays.length > 15) {
+        alert("⚠️ Errore: Non puoi prenotare per più di 15 giorni totali.");
+        return;
+    }
     const res = await fetch('/api/prenota', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({npass:userPass, giorni:selectedDays, email:email}) });
     if(res.ok) {
         selectedDays.sort();
@@ -45,16 +49,36 @@ async function inviaPren() {
     }
 }
 
+// Visualizzazione con pulsante ELIMINA (Cestino Rosso)
 async function mostraMie() {
     show('view-my-list');
     const res = await fetch(`/api/mie-prenotazioni/${userPass}`);
     const dati = await res.json();
+    
     document.getElementById('my-list-content').innerHTML = dati.map(p => `
-        <div style="padding:10px; background:#f8fafc; border-radius:10px; margin:5px 0; font-size:14px;">
-            📅 Dal ${new Date(p.data_inizio).toLocaleDateString('it-IT')} al ${new Date(p.data_fine).toLocaleDateString('it-IT')} <br>
-            <b>Stato: ${p.stato}</b>
+        <div class="pren-row">
+            <div>
+                <span style="font-size:13px; color:gray;">Periodo:</span><br>
+                <b>${new Date(p.data_inizio).toLocaleDateString('it-IT')} - ${new Date(p.data_fine).toLocaleDateString('it-IT')}</b>
+            </div>
+            <div class="btn-delete" onclick="eliminaPren(${p.id})">🗑️</div>
         </div>
     `).join('') || "Nessuna prenotazione attiva.";
+}
+
+async function eliminaPren(id) {
+    if (!confirm("Vuoi davvero eliminare questa prenotazione?")) return;
+    
+    const res = await fetch('/api/elimina-prenotazione', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ id: id, npass: userPass })
+    });
+    
+    if (res.ok) {
+        alert("Prenotazione eliminata.");
+        mostraMie(); // Ricarica la lista
+    }
 }
 
 async function cercaPass() {
