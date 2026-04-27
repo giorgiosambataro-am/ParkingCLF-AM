@@ -21,28 +21,37 @@ const transporter = nodemailer.createTransport({
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-// LOGIN e altre rotte (rimaste invariate)
+// LOGIN: Aggiorna ult_accesso nel database
 app.post('/api/valida-pass', async (req, res) => {
     const { npass } = req.body;
     try {
         const result = await pool.query('SELECT ruolo FROM registro_pass WHERE UPPER(npass) = $1', [npass.toUpperCase()]);
-        if (result.rows.length > 0) res.json({ valid: true, ruolo: result.rows[0].ruolo });
-        else res.json({ valid: false });
+        if (result.rows.length > 0) {
+            // Registra l'ultimo accesso
+            await pool.query('UPDATE registro_pass SET ult_accesso = NOW() WHERE UPPER(npass) = $1', [npass.toUpperCase()]);
+            res.json({ valid: true, ruolo: result.rows[0].ruolo });
+        } else {
+            res.json({ valid: false });
+        }
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// PRENOTAZIONE + GENERAZIONE PDF AGGIUNTA
+// PRENOTAZIONE: Aggiorna ult_pren
 app.post('/api/prenota', async (req, res) => {
     const { npass, giorni, email } = req.body;
+    // Limite 15 giorni controllato anche lato server per sicurezza
+    if (giorni.length > 15) return res.status(400).json({ error: "Limite 15 giorni superato" });
+
     try {
         const sorted = giorni.sort();
         const dataInizio = sorted[0];
         const dataFine = sorted[sorted.length - 1];
 
-        const result = await pool.query(
-            'INSERT INTO prenotazioni (npass, data_inizio, data_fine, stato) VALUES ($1, $2, $3, $4) RETURNING id', 
-            [npass.toUpperCase(), dataInizio, dataFine, 'PRENOTATO']
-        );
+        await pool.query('INSERT INTO prenotazioni (npass, data_inizio, data_fine, stato) VALUES ($1, $2, $3, $4)', 
+            [npass.toUpperCase(), dataInizio, dataFine, 'PRENOTATO']);
+            // Registra data ultima prenotazione nel registro_pass
+        await pool.query('UPDATE registro_pass SET ult_pren = NOW() WHERE UPPER(npass) = $1', [npass.toUpperCase()]);
+    
 
         // --- CREAZIONE PDF PASS ---
         const doc = new PDFDocument({ size: 'A4', margin: 50 });
@@ -81,6 +90,15 @@ app.post('/api/prenota', async (req, res) => {
         doc.fontSize(12).fillColor('gray').text('Esporre in modo visibile sul parabrezza anteriore', { align: 'center' });
         doc.end();
 
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ROTTA: ELIMINA PRENOTAZIONI
+app.post('/api/elimina-prenotazione', async (req, res) => {
+    const { id, npass } = req.body;
+    try {
+        await pool.query('DELETE FROM prenotazioni WHERE id = $1 AND UPPER(npass) = $2', [id, npass.toUpperCase()]);
+        res.json({ success: true });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
