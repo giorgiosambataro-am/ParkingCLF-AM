@@ -3,7 +3,7 @@ const { Pool } = require('pg');
 const path = require('path');
 const cors = require('cors');
 const nodemailer = require('nodemailer');
-const PDFDocument = require('pdfkit'); // Nuova libreria per il PDF
+const PDFDocument = require('pdfkit');
 
 const app = express();
 app.use(cors());
@@ -21,36 +21,26 @@ const transporter = nodemailer.createTransport({
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-// LOGIN: Aggiorna ult_accesso nel database
+// LOGIN con aggiornamento ult_accesso
 app.post('/api/valida-pass', async (req, res) => {
     const { npass } = req.body;
     if (!npass) return res.json({ valid: false });
-    
     try {
         const result = await pool.query('SELECT ruolo FROM registro_pass WHERE UPPER(npass) = $1', [npass.trim().toUpperCase()]);
-        
         if (result.rows.length > 0) {
-            // Se le colonne non esistono nel DB, questa riga bloccherà tutto il login!
             try {
                 await pool.query('UPDATE registro_pass SET ult_accesso = NOW() WHERE UPPER(npass) = $1', [npass.trim().toUpperCase()]);
-            } catch (e) {
-                console.error("Errore aggiornamento colonne: Forse mancano ult_accesso o ult_pren nel DB", e);
-                // Non bloccare il login se fallisce solo l'aggiornamento della data
-            }
+            } catch (e) { console.error("Errore update ult_accesso (verificare colonne DB):", e.message); }
             res.json({ valid: true, ruolo: result.rows[0].ruolo });
         } else {
             res.json({ valid: false });
         }
-    } catch (err) { 
-        console.error("Errore login critico:", err);
-        res.status(500).json({ error: err.message }); 
-    }
+    } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// PRENOTAZIONE: Aggiorna ult_pren
+// PRENOTAZIONE con PDF e aggiornamento ult_pren
 app.post('/api/prenota', async (req, res) => {
     const { npass, giorni, email } = req.body;
-    // Limite 15 giorni controllato anche lato server per sicurezza
     if (giorni.length > 15) return res.status(400).json({ error: "Limite 15 giorni superato" });
 
     try {
@@ -60,51 +50,44 @@ app.post('/api/prenota', async (req, res) => {
 
         await pool.query('INSERT INTO prenotazioni (npass, data_inizio, data_fine, stato) VALUES ($1, $2, $3, $4)', 
             [npass.toUpperCase(), dataInizio, dataFine, 'PRENOTATO']);
-            // Registra data ultima prenotazione nel registro_pass
-        await pool.query('UPDATE registro_pass SET ult_pren = NOW() WHERE UPPER(npass) = $1', [npass.toUpperCase()]);
-    
+        
+        try {
+            await pool.query('UPDATE registro_pass SET ult_pren = NOW() WHERE UPPER(npass) = $1', [npass.toUpperCase()]);
+        } catch (e) { console.error("Errore update ult_pren:", e.message); }
 
-        // --- CREAZIONE PDF PASS ---
         const doc = new PDFDocument({ size: 'A4', margin: 50 });
         let buffers = [];
         doc.on('data', buffers.push.bind(buffers));
         doc.on('end', async () => {
             const pdfData = Buffer.concat(buffers);
-
             const mailOptions = {
                 from: '"Parcheggio C.L. Fontanarossa" <parkingclf.am@gmail.com>',
                 to: [email, 'parkingclf.am@gmail.com'],
                 subject: `Conferma e PASS - ${npass.toUpperCase()}`,
-                html: `
-                    <div style="font-family:sans-serif; border:2px solid #3b82f6; border-radius:15px; padding:20px; max-width:600px;">
+                html: `<div style="font-family:sans-serif; border:2px solid #3b82f6; border-radius:15px; padding:20px; max-width:600px;">
                         <h2 style="color:#3b82f6;">🅿️ Parcheggio C.L. Fontanarossa</h2>
-                        <p>Gentile utente, la tua prenotazione è confermata.</p>
-                        <p><b>In allegato trovi il PASS da stampare ed esporre sul parabrezza.</b></p>
-                        <hr>
+                        <p>Prenotazione confermata. In allegato il PASS da esporre.</p>
                         <p>Periodo: dal ${new Date(dataInizio).toLocaleDateString('it-IT')} al ${new Date(dataFine).toLocaleDateString('it-IT')}</p>
-                    </div>`,
+                       </div>`,
                 attachments: [{ filename: `PASS_${npass.toUpperCase()}.pdf`, content: pdfData }]
             };
             await transporter.sendMail(mailOptions);
             res.json({ success: true });
         });
 
-        // Contenuto Grafico del PDF
-        doc.rect(20, 20, 555, 300).lineWidth(3).stroke('#3b82f6'); // Cornice
+        doc.rect(20, 20, 555, 300).lineWidth(3).stroke('#3b82f6');
         doc.fontSize(25).fillColor('#3b82f6').text('PARCHEGGIO C.L. FONTANAROSSA', { align: 'center' });
         doc.moveDown();
         doc.fontSize(60).fillColor('black').text(npass.toUpperCase(), { align: 'center' });
         doc.moveDown();
         doc.fontSize(20).text(`PERIODO DI SOSTA:`, { align: 'center' });
-        doc.fontSize(22).text(`DAL ${new Date(dataInizio).toLocaleDateString('it-IT')} AL ${new Date(dataFine).toLocaleDateString('it-IT')}`, { align: 'center', b: true });
-        doc.moveDown();
-        doc.fontSize(12).fillColor('gray').text('Esporre in modo visibile sul parabrezza anteriore', { align: 'center' });
+        doc.fontSize(22).text(`DAL ${new Date(dataInizio).toLocaleDateString('it-IT')} AL ${new Date(dataFine).toLocaleDateString('it-IT')}`, { align: 'center', bold: true });
         doc.end();
 
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// ROTTA: ELIMINA PRENOTAZIONI
+// ELIMINAZIONE
 app.post('/api/elimina-prenotazione', async (req, res) => {
     const { id, npass } = req.body;
     try {
@@ -113,12 +96,12 @@ app.post('/api/elimina-prenotazione', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Rotte Piantone e Admin 
 app.get('/api/mie-prenotazioni/:npass', async (req, res) => {
     const r = await pool.query('SELECT id, data_inizio, data_fine, stato FROM prenotazioni WHERE UPPER(npass) = $1 AND data_fine >= CURRENT_DATE ORDER BY data_inizio ASC', [req.params.npass.toUpperCase()]);
     res.json(r.rows);
 });
 
+// ROTTE PIANTONE / ADMIN (Invariate)
 app.get('/api/piantone/cerca/:npass', async (req, res) => {
     const r = await pool.query('SELECT * FROM prenotazioni WHERE UPPER(npass) = $1 AND data_fine >= CURRENT_DATE ORDER BY data_inizio ASC LIMIT 1', [req.params.npass.toUpperCase()]);
     res.json(r.rows.length > 0 ? { trovato: true, prenotazione: r.rows[0] } : { trovato: false });
