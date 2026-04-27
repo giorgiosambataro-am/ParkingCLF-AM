@@ -1,7 +1,7 @@
 {
   "name": "parking-clf",
   "version": "1.0.0",
-  "description": "",
+  "description": "Sistema gestione parcheggio CLF",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
@@ -11,6 +11,6 @@
     "pg": "^8.11.0",
     "cors": "^2.8.5",
     "nodemailer": "^6.9.1",
-    "pdfkit": "0.15.0"
+    "pdfkit": "^0.15.0"
   }
 }
