@@ -64,26 +64,50 @@ async function eliminaPren(id) {
     if(res.ok) mostraMie();
 }
 
-// ... (Funzioni Piantone/Admin invariate)
 async function cercaPass() {
     const p = document.getElementById('search-p').value.trim().toUpperCase();
+    if(!p) return;
     const res = await fetch(`/api/piantone/cerca/${p}`);
     const data = await res.json();
+    
     if(data.trovato) {
         currentPren = data.prenotazione;
         document.getElementById('panel-piantone').classList.remove('hidden');
         document.getElementById('lab-pass').innerHTML = `PASS: ${currentPren.npass}`;
-    } else alert("Nessuna prenotazione trovata.");
+        
+        // Formatta periodo
+        const d1 = new Date(currentPren.data_inizio).toLocaleDateString('it-IT');
+        const d2 = new Date(currentPren.data_fine).toLocaleDateString('it-IT');
+        document.getElementById('lab-periodo').innerHTML = `(Periodo: ${d1} - ${d2})`;
+        
+        // Gestione orari sotto pulsanti (se presenti nel DB)
+        document.getElementById('reg-e').innerHTML = currentPren.orario_ingresso ? 
+            `Registrato il ${new Date(currentPren.orario_ingresso).toLocaleString('it-IT', {dateStyle:'short', timeStyle:'short'})}` : "";
+        document.getElementById('reg-u').innerHTML = currentPren.orario_uscita ? 
+            `Registrato il ${new Date(currentPren.orario_uscita).toLocaleString('it-IT', {dateStyle:'short', timeStyle:'short'})}` : "";
+            
+    } else {
+        alert("Nessuna prenotazione trovata per questo PASS.");
+        document.getElementById('panel-piantone').classList.add('hidden');
+    }
 }
+
+async function aggiornaVeicoli() {
+    const res = await fetch('/api/veicoli-dentro');
+    const dati = await res.json();
+    document.getElementById('lista-veicoli').innerHTML = dati.map(x => `
+        <tr>
+            <td style="font-weight:bold;">${x.npass}</td>
+            <td>${new Date(x.orario_ingresso).toLocaleTimeString('it-IT', {hour:'2-digit', minute:'2-digit'})}</td>
+        </tr>
+    `).join('') || "<tr><td colspan='2' style='text-align:center;'>Nessun veicolo presente</td></tr>";
+}
+
 async function mossa(tipo) {
     await fetch('/api/piantone/azione', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({id:currentPren.id, azione:tipo}) });
     cercaPass(); aggiornaVeicoli();
 }
-async function aggiornaVeicoli() {
-    const res = await fetch('/api/veicoli-dentro');
-    const dati = await res.json();
-    document.getElementById('lista-veicoli').innerHTML = `<table>${dati.map(x => `<tr><td>${x.npass}</td></tr>`).join('')}</table>`;
-}
+
 async function mostraAdmin() {
     const res = await fetch('/api/admin/cruscotto');
     const dati = await res.json();
