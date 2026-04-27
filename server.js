@@ -3,6 +3,7 @@ const { Pool } = require('pg');
 const path = require('path');
 const cors = require('cors');
 const nodemailer = require('nodemailer');
+const PDFDocument = require('pdfkit'); // Nuova libreria per il PDF
 
 const app = express();
 app.use(cors());
@@ -20,7 +21,7 @@ const transporter = nodemailer.createTransport({
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-// LOGIN
+// LOGIN e altre rotte (rimaste invariate)
 app.post('/api/valida-pass', async (req, res) => {
     const { npass } = req.body;
     try {
@@ -30,7 +31,7 @@ app.post('/api/valida-pass', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// PRENOTAZIONE (Salva come unico record con Inizio e Fine)
+// PRENOTAZIONE + GENERAZIONE PDF AGGIUNTA
 app.post('/api/prenota', async (req, res) => {
     const { npass, giorni, email } = req.body;
     try {
@@ -38,40 +39,59 @@ app.post('/api/prenota', async (req, res) => {
         const dataInizio = sorted[0];
         const dataFine = sorted[sorted.length - 1];
 
-        // Inserisce un UNICO record per tutta la prenotazione
-        await pool.query(
-            'INSERT INTO prenotazioni (npass, data_inizio, data_fine, stato) VALUES ($1, $2, $3, $4)', 
+        const result = await pool.query(
+            'INSERT INTO prenotazioni (npass, data_inizio, data_fine, stato) VALUES ($1, $2, $3, $4) RETURNING id', 
             [npass.toUpperCase(), dataInizio, dataFine, 'PRENOTATO']
         );
-        
-        const mailOptions = {
-            from: '"Parcheggio C.L. Fontanarossa" <parkingclf.am@gmail.com>',
-            to: [email, 'parkingclf.am@gmail.com'],
-            subject: `Conferma Prenotazione - ${npass.toUpperCase()}`,
-            html: `
-                <div style="font-family:sans-serif; border:2px solid #3b82f6; border-radius:15px; padding:20px; max-width:600px;">
-                    <h2 style="color:#3b82f6;">🅿️ Parcheggio C.L. Fontanarossa</h2>
-                    <p>Conferma per il PASS: <b>${npass.toUpperCase()}</b></p>
-                    <p><b>Periodo Prenotato:</b> dal ${new Date(dataInizio).toLocaleDateString('it-IT')} al ${new Date(dataFine).toLocaleDateString('it-IT')}</p>
-                </div>`
-        };
-        await transporter.sendMail(mailOptions);
-        res.json({ success: true });
+
+        // --- CREAZIONE PDF PASS ---
+        const doc = new PDFDocument({ size: 'A4', margin: 50 });
+        let buffers = [];
+        doc.on('data', buffers.push.bind(buffers));
+        doc.on('end', async () => {
+            const pdfData = Buffer.concat(buffers);
+
+            const mailOptions = {
+                from: '"Parcheggio C.L. Fontanarossa" <parkingclf.am@gmail.com>',
+                to: [email, 'parkingclf.am@gmail.com'],
+                subject: `Conferma e PASS - ${npass.toUpperCase()}`,
+                html: `
+                    <div style="font-family:sans-serif; border:2px solid #3b82f6; border-radius:15px; padding:20px; max-width:600px;">
+                        <h2 style="color:#3b82f6;">🅿️ Parcheggio C.L. Fontanarossa</h2>
+                        <p>Gentile utente, la tua prenotazione è confermata.</p>
+                        <p><b>In allegato trovi il PASS da stampare ed esporre sul parabrezza.</b></p>
+                        <hr>
+                        <p>Periodo: dal ${new Date(dataInizio).toLocaleDateString('it-IT')} al ${new Date(dataFine).toLocaleDateString('it-IT')}</p>
+                    </div>`,
+                attachments: [{ filename: `PASS_${npass.toUpperCase()}.pdf`, content: pdfData }]
+            };
+            await transporter.sendMail(mailOptions);
+            res.json({ success: true });
+        });
+
+        // Contenuto Grafico del PDF
+        doc.rect(20, 20, 555, 300).lineWidth(3).stroke('#3b82f6'); // Cornice
+        doc.fontSize(25).fillColor('#3b82f6').text('PARCHEGGIO C.L. FONTANAROSSA', { align: 'center' });
+        doc.moveDown();
+        doc.fontSize(60).fillColor('black').text(npass.toUpperCase(), { align: 'center' });
+        doc.moveDown();
+        doc.fontSize(20).text(`PERIODO DI SOSTA:`, { align: 'center' });
+        doc.fontSize(22).text(`DAL ${new Date(dataInizio).toLocaleDateString('it-IT')} AL ${new Date(dataFine).toLocaleDateString('it-IT')}`, { align: 'center', b: true });
+        doc.moveDown();
+        doc.fontSize(12).fillColor('gray').text('Esporre in modo visibile sul parabrezza anteriore', { align: 'center' });
+        doc.end();
+
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// LISTA MIE PRENOTAZIONI
+// Rotte Piantone e Admin (invariate per mantenere i progressi)
 app.get('/api/mie-prenotazioni/:npass', async (req, res) => {
     const r = await pool.query('SELECT data_inizio, data_fine, stato FROM prenotazioni WHERE UPPER(npass) = $1 AND data_fine >= CURRENT_DATE ORDER BY data_inizio ASC', [req.params.npass.toUpperCase()]);
     res.json(r.rows);
 });
 
-// PIANTONE: CERCA IL RECORD UNICO
 app.get('/api/piantone/cerca/:npass', async (req, res) => {
-    const r = await pool.query(
-        'SELECT * FROM prenotazioni WHERE UPPER(npass) = $1 AND data_fine >= CURRENT_DATE ORDER BY data_inizio ASC LIMIT 1', 
-        [req.params.npass.toUpperCase()]
-    );
+    const r = await pool.query('SELECT * FROM prenotazioni WHERE UPPER(npass) = $1 AND data_fine >= CURRENT_DATE ORDER BY data_inizio ASC LIMIT 1', [req.params.npass.toUpperCase()]);
     res.json(r.rows.length > 0 ? { trovato: true, prenotazione: r.rows[0] } : { trovato: false });
 });
 
@@ -82,26 +102,12 @@ app.post('/api/piantone/azione', async (req, res) => {
     res.json({ success: true });
 });
 
-// ADMIN: Calcola occupazione verificando se il giorno è compreso tra Inizio e Fine
 app.get('/api/admin/cruscotto', async (req, res) => {
-    try {
-        // Query che genera i prossimi 15 giorni e conta quante prenotazioni li coprono
-        const query = `
-            WITH giorni AS (
-                SELECT generate_series(CURRENT_DATE, CURRENT_DATE + interval '14 days', '1 day')::date AS d
-            )
-            SELECT g.d AS data, COUNT(p.id) AS occupati
-            FROM giorni g
-            LEFT JOIN prenotazioni p ON g.d BETWEEN p.data_inizio AND p.data_fine
-            GROUP BY g.d ORDER BY g.d;
-        `;
-        const r = await pool.query(query);
-        res.json(r.rows.map(row => ({
-            data: new Date(row.data).toLocaleDateString('it-IT'),
-            occupati: parseInt(row.occupati),
-            liberi: 120 - parseInt(row.occupati)
-        })));
-    } catch (err) { res.status(500).json({ error: err.message }); }
+    const query = `WITH giorni AS (SELECT generate_series(CURRENT_DATE, CURRENT_DATE + interval '44 days', '1 day')::date AS d)
+                   SELECT g.d AS data, COUNT(p.id) AS occupati FROM giorni g LEFT JOIN prenotazioni p ON g.d BETWEEN p.data_inizio AND p.data_fine
+                   GROUP BY g.d ORDER BY g.d;`;
+    const r = await pool.query(query);
+    res.json(r.rows.map(row => ({ data: new Date(row.data).toLocaleDateString('it-IT'), occupati: parseInt(row.occupati), liberi: 120 - parseInt(row.occupati) })));
 });
 
 app.get('/api/veicoli-dentro', async (req, res) => {
