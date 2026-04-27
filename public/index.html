@@ -2,111 +2,102 @@
 <html lang="it">
 <head>
     <meta name="google-site-verification" content="vDRg6d5eBw-8Dt3S5DiJxXB4w_pNs9qwMUM9SwIbWxs" />
-    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Parking CLF System</title>
     <style>
         :root { --blue: #3b82f6; --green: #22c55e; --orange: #f59e0b; --red: #ef4444; --gray: #64748b; --light: #f8fafc; }
-        body { font-family: 'Segoe UI', sans-serif; background: #f1f5f9; display: flex; justify-content: center; padding: 20px; margin: 0; }
-        .card { background: white; padding: 25px; border-radius: 20px; width: 100%; max-width: 480px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f1f5f9; display: flex; justify-content: center; padding: 20px; margin: 0; }
+        .card { background: white; padding: 25px; border-radius: 20px; width: 100%; max-width: 480px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); text-align: center; }
         .hidden { display: none; }
-        input, button { width: 100%; padding: 14px; margin: 8px 0; border-radius: 12px; border: 1px solid #e2e8f0; font-size: 16px; box-sizing: border-box; }
-        button { border: none; font-weight: bold; cursor: pointer; color: white; background: var(--blue); }
-        .btn-green { background: var(--green); } .btn-orange { background: var(--orange); } .btn-red { background: var(--red); } .btn-gray { background: var(--gray); }
         
-        /* Box Successo (IMG 3) */
-        .summary-box { background: var(--light); padding: 15px; border-radius: 12px; text-align: left; margin: 15px 0; border: 1px solid #e2e8f0; }
-        .summary-item { margin-bottom: 8px; font-size: 14px; }
-        .summary-item b { color: var(--blue); }
+        input, button { width: 100%; padding: 14px; margin: 8px 0; border-radius: 12px; border: 1px solid #e2e8f0; font-size: 16px; box-sizing: border-box; transition: 0.3s; }
+        button { border: none; font-weight: bold; cursor: pointer; color: white; background: var(--blue); }
+        button:hover { opacity: 0.9; transform: translateY(-1px); }
+        
+        .btn-green { background: var(--green); } 
+        .btn-orange { background: var(--orange); } 
+        .btn-red { background: var(--red); } 
+        .btn-gray { background: var(--gray); }
 
-        /* Calendario */
-        #cal-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; max-height: 180px; overflow-y: auto; margin: 10px 0; }
-        .day-slot { padding: 10px; border: 1px solid #e2e8f0; border-radius: 8px; text-align: center; cursor: pointer; font-size: 13px; }
-        .selected { background: var(--blue); color: white; }
+        /* Calendario 45gg */
+        #cal-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; max-height: 250px; overflow-y: auto; margin: 15px 0; padding: 5px; border: 1px solid #eee; border-radius: 10px; }
+        .day-slot { padding: 10px; border: 1px solid #e2e8f0; border-radius: 8px; cursor: pointer; font-size: 13px; background: white; }
+        .selected { background: var(--blue) !important; color: white !important; border-color: var(--blue); }
 
-        /* Piantone */
-        .search-container { display: flex; gap: 10px; background: var(--light); padding: 5px; border-radius: 15px; border: 1px solid #cbd5e1; }
-        .search-container input { border: none; background: transparent; margin: 0; }
-        .search-container button { width: 80px; margin: 0; }
-        .piantone-btns { display: flex; gap: 15px; margin-top: 20px; }
-        .btn-col { flex: 1; text-align: center; }
-        .ts-info { font-size: 11px; color: var(--gray); margin-top: 5px; line-height: 1.3; }
+        /* Box Successo (Riepilogo) */
+        .summary-box { background: var(--light); padding: 15px; border-radius: 12px; text-align: left; margin: 15px 0; border: 1px solid #e2e8f0; font-size: 14px; line-height: 1.6; }
 
+        /* Lista Prenotazioni con Cestino */
+        .pren-row { display: flex; justify-content: space-between; align-items: center; padding: 12px; background: #f8fafc; border-radius: 12px; margin-bottom: 8px; border: 1px solid #e2e8f0; text-align: left; }
+        .btn-delete { color: var(--red); cursor: pointer; font-size: 20px; transition: 0.2s; }
+        .btn-delete:hover { transform: scale(1.2); }
+
+        /* Piantone & Admin */
         table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 13px; }
-        th, td { padding: 10px; border-bottom: 1px solid #eee; text-align: left; }
+        th, td { padding: 12px; border-bottom: 1px solid #eee; text-align: left; }
     </style>
 </head>
 <body>
     <div class="card">
+        
         <div id="view-login">
-            <h2 style="text-align:center;">🅿️ CLF Fontanarossa</h2>
-            <input type="text" id="in-npass" placeholder="IL TUO PASS">
-            <button onclick="doLogin()">Entra</button>
+            <h2 style="color: var(--blue);">🅿️ CLF Fontanarossa</h2>
+            <p style="color: var(--gray); font-size: 14px;">Inserisci il tuo codice identificativo</p>
+            <input type="text" id="in-npass" placeholder="IL TUO PASS (es. D0001)" style="text-align: center; text-transform: uppercase;">
+            <button onclick="doLogin()">ENTRA</button>
         </div>
 
         <div id="view-user" class="hidden">
-            <h3>📅 Prenota Posto</h3>
+            <h3 id="user-title">📅 Prenota Posto</h3>
+            <p style="font-size: 12px; color: var(--gray);">Seleziona i giorni (Max 15)</p>
             <div id="cal-grid"></div>
-            <input type="email" id="u-email" placeholder="Email conferma">
-            <button onclick="inviaPren()">INVIA PRENOTAZIONE</button>
+            <input type="email" id="u-email" placeholder="Email per ricevere il PASS">
+            <button onclick="inviaPren()" class="btn-green">INVIA PRENOTAZIONE</button>
             <button class="btn-gray" onclick="mostraMie()">Le mie prenotazioni</button>
-            <button class="btn-red" style="margin-top:15px;" onclick="location.reload()">ESCI</button>
-            <style>
-    .btn-delete { color: var(--red); cursor: pointer; font-size: 18px; font-weight: bold; }
-    .pren-row { display: flex; justify-content: space-between; align-items: center; padding: 12px; background: #f8fafc; border-radius: 12px; margin-bottom: 8px; border: 1px solid #e2e8f0; }
-</style>
-
-<button onclick="inviaPren()">INVIA PRENOTAZIONE</button>
-
-<div id="view-my-list" class="hidden">
-    <h3>Le mie Date</h3>
-    <div id="my-list-content"></div>
-    <button class="btn-gray" onclick="show('view-user')">Indietro</button>
-</div>
+            <button class="btn-red" style="margin-top: 20px;" onclick="location.reload()">ESCI</button>
         </div>
 
         <div id="view-my-list" class="hidden">
-            <h3>Le mie Date</h3>
+            <h3>Gestione Prenotazioni</h3>
             <div id="my-list-content"></div>
-            <button class="btn-gray" onclick="show('view-user')">Indietro</button>
+            <button class="btn-gray" style="margin-top: 15px;" onclick="show('view-user')">Torna Indietro</button>
         </div>
 
-        <div id="view-success" class="hidden" style="text-align:center;">
-            <div style="font-size:50px; color:var(--green)">✅</div>
-            <h3>Prenotazione Effettuata</h3>
+        <div id="view-success" class="hidden">
+            <div style="font-size: 60px; color: var(--green);">✅</div>
+            <h3>Prenotazione Confermata!</h3>
+            <p>Abbiamo inviato il PASS PDF alla tua email.</p>
             <div class="summary-box" id="summary-details"></div>
             <button onclick="location.reload()">Torna alla Home</button>
         </div>
 
         <div id="view-piantone" class="hidden">
-            <h3>Controllo Sbarra 🚧</h3>
-            <div class="search-container">
-                <input type="text" id="search-p" placeholder="Cerca Pass...">
-                <button onclick="cercaPass()">Cerca</button>
-            </div>
-            <div id="panel-piantone" class="hidden" style="margin-top:20px;">
-                <h4 id="lab-pass">PASS: ---</h4>
-                <div class="piantone-btns">
-                    <div class="btn-col">
-                        <button class="btn-green" onclick="mossa('E')">ENTRATA</button>
-                        <div id="info-e" class="ts-info"></div>
-                    </div>
-                    <div class="btn-col">
-                        <button class="btn-orange" onclick="mossa('U')">USCITA</button>
-                        <div id="info-u" class="ts-info"></div>
-                    </div>
+            <h3>🚧 Varco Piantone</h3>
+            <input type="text" id="search-p" placeholder="Cerca Pass..." style="text-transform: uppercase;">
+            <button onclick="cercaPass()">CERCA PRENOTAZIONE</button>
+            
+            <div id="panel-piantone" class="hidden" style="margin-top: 20px; padding: 15px; border: 1px solid var(--blue); border-radius: 15px;">
+                <h4 id="lab-pass" style="margin: 0;">PASS: ---</h4>
+                <div style="display: flex; gap: 10px; margin-top: 15px;">
+                    <button class="btn-green" onclick="mossa('E')">INGRESSO</button>
+                    <button class="btn-orange" onclick="mossa('U')">USCITA</button>
                 </div>
             </div>
-            <h4 style="margin-top:25px;">🏎️ Veicoli Dentro</h4>
+
+            <h4 style="margin-top: 25px; text-align: left;">🏎️ Veicoli in Parcheggio</h4>
             <div id="lista-veicoli"></div>
-            <button class="btn-gray" style="margin-top:20px;" onclick="location.reload()">ESCI</button>
+            <button class="btn-red" style="margin-top: 20px;" onclick="location.reload()">ESCI</button>
         </div>
 
         <div id="view-admin" class="hidden">
-            <h3>📊 Cruscotto Admin</h3>
+            <h3>📊 Disponibilità Posti</h3>
             <table id="tab-admin"></table>
-            <button class="btn-gray" style="margin-top:20px;" onclick="location.reload()">ESCI</button>
+            <button class="btn-red" style="margin-top: 20px;" onclick="location.reload()">ESCI</button>
         </div>
+
     </div>
+
     <script src="script.js"></script>
 </body>
 </html>
