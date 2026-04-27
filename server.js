@@ -24,16 +24,27 @@ app.use(express.static(path.join(__dirname, 'public')));
 // LOGIN: Aggiorna ult_accesso nel database
 app.post('/api/valida-pass', async (req, res) => {
     const { npass } = req.body;
+    if (!npass) return res.json({ valid: false });
+    
     try {
-        const result = await pool.query('SELECT ruolo FROM registro_pass WHERE UPPER(npass) = $1', [npass.toUpperCase()]);
+        const result = await pool.query('SELECT ruolo FROM registro_pass WHERE UPPER(npass) = $1', [npass.trim().toUpperCase()]);
+        
         if (result.rows.length > 0) {
-            // Registra l'ultimo accesso
-            await pool.query('UPDATE registro_pass SET ult_accesso = NOW() WHERE UPPER(npass) = $1', [npass.toUpperCase()]);
+            // Se le colonne non esistono nel DB, questa riga bloccherà tutto il login!
+            try {
+                await pool.query('UPDATE registro_pass SET ult_accesso = NOW() WHERE UPPER(npass) = $1', [npass.trim().toUpperCase()]);
+            } catch (e) {
+                console.error("Errore aggiornamento colonne: Forse mancano ult_accesso o ult_pren nel DB", e);
+                // Non bloccare il login se fallisce solo l'aggiornamento della data
+            }
             res.json({ valid: true, ruolo: result.rows[0].ruolo });
         } else {
             res.json({ valid: false });
         }
-    } catch (err) { res.status(500).json({ error: err.message }); }
+    } catch (err) { 
+        console.error("Errore login critico:", err);
+        res.status(500).json({ error: err.message }); 
+    }
 });
 
 // PRENOTAZIONE: Aggiorna ult_pren
@@ -102,9 +113,9 @@ app.post('/api/elimina-prenotazione', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Rotte Piantone e Admin (invariate per mantenere i progressi)
+// Rotte Piantone e Admin 
 app.get('/api/mie-prenotazioni/:npass', async (req, res) => {
-    const r = await pool.query('SELECT data_inizio, data_fine, stato FROM prenotazioni WHERE UPPER(npass) = $1 AND data_fine >= CURRENT_DATE ORDER BY data_inizio ASC', [req.params.npass.toUpperCase()]);
+    const r = await pool.query('SELECT id, data_inizio, data_fine, stato FROM prenotazioni WHERE UPPER(npass) = $1 AND data_fine >= CURRENT_DATE ORDER BY data_inizio ASC', [req.params.npass.toUpperCase()]);
     res.json(r.rows);
 });
 
